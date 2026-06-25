@@ -258,9 +258,42 @@
     return s;
   }
 
+  // ---------- 足軽（歩兵）：最弱の駒らしく素朴・小柄・非金属 ----------
+  function footsoldier(o) {
+    o = o || {};
+    const cloth = o.cloth || '#b5483f';
+    const trim = o.trim || '#caa15a';
+    const skin = o.skin || '#ffd0a0';
+    const hat = o.hat || '#9a7b46';
+    const C = (c) => M(c, { metal: 0.05, rough: 0.85 });   // 布（非金属・つや消し）
+    const L = (c) => M(c, { metal: 0.15, rough: 0.6 });
+    let s = ring();
+    // 脚（脚絆）
+    s += `<a-cylinder ${C('#6a4a30')} radius="0.07" height="0.2" position="-0.1 0.1 0.02"></a-cylinder>
+          <a-cylinder ${C('#6a4a30')} radius="0.07" height="0.2" position="0.1 0.1 0.02"></a-cylinder>`;
+    // 着物（裾広がり・控えめ）＋帯
+    s += `<a-cone ${C(cloth)} radius-bottom="0.24" radius-top="0.17" height="0.44" position="0 0.4 0"></a-cone>`;
+    s += `<a-cylinder ${L(trim)} radius="0.185" height="0.05" position="0 0.5 0"></a-cylinder>`;
+    s += `<a-box ${C('#8a352e')} width="0.06" height="0.3" depth="0.02" position="0 0.56 0.165" rotation="0 0 8"></a-box>`;
+    // 腕
+    s += `<a-cylinder ${C(cloth)} radius="0.045" height="0.3" position="-0.21 0.56 0.02" rotation="0 0 7"></a-cylinder>
+          <a-cylinder ${C(cloth)} radius="0.045" height="0.3" position="0.21 0.56 0.02" rotation="0 0 -7"></a-cylinder>`;
+    // 頭（小さめ）＋素朴な点目
+    s += `<a-sphere ${M(skin, { rough: 0.75 })} radius="0.135" position="0 0.84 0"></a-sphere>`;
+    s += `<a-sphere ${M('#2a1c12', { rough: 0.5 })} radius="0.022" position="-0.05 0.85 0.12"></a-sphere>
+          <a-sphere ${M('#2a1c12', { rough: 0.5 })} radius="0.022" position="0.05 0.85 0.12"></a-sphere>`;
+    // 陣笠（円錐の笠）
+    s += `<a-cone ${L(hat)} radius-bottom="0.27" radius-top="0.02" height="0.16" position="0 0.99 0"></a-cone>`;
+    s += `<a-sphere ${L(hat)} radius="0.03" position="0 1.07 0"></a-sphere>`;
+    // 素朴な竹槍
+    s += `<a-cylinder ${C('#7a5a32')} radius="0.016" height="1.0" position="0.28 0.6 0.02"></a-cylinder>`;
+    s += `<a-cone ${M('#c8cdd4', { metal: 0.45, rough: 0.45 })} radius-bottom="0.035" radius-top="0" height="0.13" position="0.28 1.16 0.02"></a-cone>`;
+    return s;
+  }
+
   // ---------- 各駒 ----------
   const B = {};
-  B.fu   = () => warrior({ armor: '#b23b3b', trim: '#e0c060', skin: '#ffd0a0', metal: 0.3, rough: 0.55, helmet: 'simple',   weapon: 'yari',     eye: '#ffd86a', gem: '#ffd24a' });
+  B.fu   = () => footsoldier({ cloth: '#b5483f', trim: '#caa15a', hat: '#9a7b46' });
   B.kyo  = () => warrior({ armor: '#c5793a', trim: '#ffd9a0', metal: 0.45, rough: 0.45, helmet: 'simple',   weapon: 'longyari', eye: '#ffcf6a', gem: '#ffcf6a' });
   B.kei  = () => horseRider({ horse: '#6b4a2e', armor: '#2f9e57', trim: '#bdeccb', eye: '#a6ffc6', gem: '#a6ffc6' });
   B.gin  = () => warrior({ armor: '#c2cad4', trim: '#f0f5fb', metal: 0.85, rough: 0.25, helmet: 'kuwagata', weapon: 'katana',   cape: '#46577a', eye: '#cdeeff', gem: '#cdeeff' });
