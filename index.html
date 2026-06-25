@@ -5,14 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
   <title>将棋WebAR — Phase 1-1 プロトタイプ（歩兵）</title>
 
-  <!-- A-Frame 本体 -->
-  <script src="https://aframe.io/releases/1.5.0/aframe.min.js"></script>
+  <!-- A-Frame 本体（MindAR 1.2.x が動作確認しているのは 1.3.0。新しい版だと背景が透過せず黒くなる） -->
+  <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
   <!-- MindAR (Image Tracking) の A-Frame 連携ビルド -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
 
   <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", sans-serif; background:#000; }
+    html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", sans-serif; }
 
     /* 起動前の案内オーバーレイ */
     #ui {
