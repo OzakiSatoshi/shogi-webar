@@ -266,8 +266,8 @@
     const skin = o.skin || '#ffd0a0';
     const hat = o.hat || '#9a7b46';
     const C = (c) => M(c, { metal: 0.05, rough: 0.85 });   // 布（非金属・つや消し）
-    const L = (c) => M(c, { metal: 0.15, rough: 0.6 });
-    let s = ring();
+    const L = (c) => M(c, { metal: o.promoted ? 0.85 : 0.15, rough: o.promoted ? 0.2 : 0.6 });
+    let s = o.promoted ? aura() : ring();
     // 脚（脚絆）
     s += `<a-cylinder ${C('#6a4a30')} radius="0.07" height="0.2" position="-0.1 0.1 0.02"></a-cylinder>
           <a-cylinder ${C('#6a4a30')} radius="0.07" height="0.2" position="0.1 0.1 0.02"></a-cylinder>`;
@@ -275,6 +275,7 @@
     s += `<a-cone ${C(cloth)} radius-bottom="0.24" radius-top="0.17" height="0.44" position="0 0.4 0"></a-cone>`;
     s += `<a-cylinder ${L(trim)} radius="0.185" height="0.05" position="0 0.5 0"></a-cylinder>`;
     s += `<a-box ${C('#8a352e')} width="0.06" height="0.3" depth="0.02" position="0 0.56 0.165" rotation="0 0 8"></a-box>`;
+    if (o.promoted) s += `<a-octahedron ${glow('#ffe07a', 1.1)} radius="0.05" position="0 0.6 0.17"></a-octahedron>`;
     // 腕
     s += `<a-cylinder ${C(cloth)} radius="0.045" height="0.3" position="-0.21 0.56 0.02" rotation="0 0 7"></a-cylinder>
           <a-cylinder ${C(cloth)} radius="0.045" height="0.3" position="0.21 0.56 0.02" rotation="0 0 -7"></a-cylinder>`;
@@ -285,9 +286,11 @@
     // 陣笠（円錐の笠）
     s += `<a-cone ${L(hat)} radius-bottom="0.27" radius-top="0.02" height="0.16" position="0 0.99 0"></a-cone>`;
     s += `<a-sphere ${L(hat)} radius="0.03" position="0 1.07 0"></a-sphere>`;
+    if (o.promoted) s += `<a-torus ${M('#ffd700', { metal: 0.9, rough: 0.18 })} radius="0.23" radius-tubular="0.018" rotation="-90 0 0" position="0 0.93 0"></a-torus>`;
     // 素朴な竹槍
     s += `<a-cylinder ${C('#7a5a32')} radius="0.016" height="1.0" position="0.28 0.6 0.02"></a-cylinder>`;
     s += `<a-cone ${M('#c8cdd4', { metal: 0.45, rough: 0.45 })} radius-bottom="0.035" radius-top="0" height="0.13" position="0.28 1.16 0.02"></a-cone>`;
+    if (o.promoted) s += `<a-cone ${glow('#ffe07a', 0.6)} radius-bottom="0.037" radius-top="0" height="0.14" position="0.28 1.16 0.02"></a-cone>`;
     return s;
   }
 
@@ -302,7 +305,7 @@
   B.hi   = () => warrior({ armor: '#3f6fd0', trim: '#bcd6ff', metal: 0.75, rough: 0.28, helmet: 'kuwagata', weapon: 'longyari', wheels: true, eye: '#bcecff', gem: '#bcecff' });
   B.ou   = () => king();
 
-  B.to   = () => warrior({ armor: '#bd3a3a', trim: '#ffd700', metal: 0.5, rough: 0.4, helmet: 'crescent', weapon: 'yari',   eye: '#ffe07a', gem: '#ffd700', promoted: true });
+  B.to   = () => footsoldier({ cloth: '#bd3a3a', trim: '#ffd700', hat: '#c79a3a', promoted: true });
   B.nkyo = () => warrior({ armor: '#cf8a3a', trim: '#ffe07a', metal: 0.6, rough: 0.35, helmet: 'crescent', weapon: 'longyari', eye: '#ffe07a', gem: '#ffd700', promoted: true });
   B.nkei = () => warrior({ armor: '#34ad60', trim: '#ffe07a', metal: 0.6, rough: 0.35, helmet: 'crescent', weapon: 'yari',   eye: '#cbffd9', gem: '#ffd700', promoted: true });
   B.ngin = () => warrior({ armor: '#cfd6e0', trim: '#ffe07a', metal: 0.9, rough: 0.2, helmet: 'crescent', weapon: 'katana', cape: '#5a4a2a', eye: '#fff0c0', gem: '#ffd700', promoted: true });
