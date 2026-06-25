@@ -42,15 +42,19 @@
   <button id="next" class="nav">›</button>
   <div id="strip"></div>
 
-  <a-scene background="color: #11203b" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false"
-           renderer="colorManagement: true, physicallyCorrectLights">
-    <a-entity light="type: ambient; intensity: 0.85;"></a-entity>
-    <a-entity light="type: directional; intensity: 0.8;" position="1 2 1.5"></a-entity>
-    <a-entity light="type: point; intensity: 0.4;" position="-1 1 1"></a-entity>
+  <a-scene background="color: #0a1020" vr-mode-ui="enabled: false" device-orientation-permission-ui="enabled: false"
+           renderer="colorManagement: true, physicallyCorrectLights, exposure: 1.1, toneMapping: ACESFilmic">
+    <!-- ドラマチックな多灯ライティング -->
+    <a-entity light="type: hemisphere; color: #95a8d0; groundColor: #221608; intensity: 0.55"></a-entity>
+    <a-entity light="type: directional; color: #fff2dc; intensity: 1.1" position="2.5 4 2.5"></a-entity>
+    <a-entity light="type: point; color: #4f9bff; intensity: 0.9; distance: 8" position="-2.2 1.4 -1.6"></a-entity>
+    <a-entity light="type: point; color: #ff7a44; intensity: 0.5; distance: 7" position="2 0.5 1.8"></a-entity>
 
-    <!-- 台座 -->
-    <a-cylinder color="#243a5e" radius="0.55" height="0.1" position="0 -0.05 0"></a-cylinder>
-    <a-cylinder color="#1a2c49" radius="0.62" height="0.04" position="0 -0.1 0"></a-cylinder>
+    <!-- 台座（発光リング付きヒーロー風）-->
+    <a-cylinder color="#2a3f63" metalness="0.4" roughness="0.5" radius="0.55" height="0.1" position="0 -0.05 0"></a-cylinder>
+    <a-cylinder color="#16243c" radius="0.62" height="0.04" position="0 -0.1 0"></a-cylinder>
+    <a-torus material="color: #3fd0ff; emissive: #3fd0ff; emissiveIntensity: 1; metalness: 0; roughness: 0.4"
+      radius="0.58" radius-tubular="0.012" rotation="-90 0 0" position="0 0.012 0"></a-torus>
 
     <!-- ターンテーブル（駒を載せて回転）-->
     <a-entity id="turntable" position="0 0 0"
