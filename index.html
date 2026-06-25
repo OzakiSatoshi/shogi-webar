@@ -73,9 +73,15 @@
     <p>下の<strong>マーカーシート</strong>を別画面（PC/タブレット）に表示、または印刷して、各マーカーを物理駒の近くに置きます。
        カメラで映すと、各マーカー（駒の漢字付き）の上に対応する<strong>3Dキャラ</strong>が立ちます。</p>
     <div class="setbtns" id="setbtns">
-      <a href="?set=types" data-set="types">全14種</a>
-      <a href="?set=side" data-set="side">先手20枚</a>
-      <a href="?set=full" data-set="full">両陣40枚</a>
+      <a data-set="types">全14種</a>
+      <a data-set="side">先手20枚</a>
+      <a data-set="full">両陣40枚</a>
+    </div>
+    <div class="setbtns" id="markerbtns">
+      <a data-marker="std">一般駒</a>
+      <a data-marker="real">装飾駒</a>
+      <a data-marker="koma">駒風</a>
+      <a data-marker="pattern">抽象</a>
     </div>
     <div id="gridWrap"><canvas id="gridCanvas"></canvas></div>
     <div id="compileBox">
@@ -131,12 +137,16 @@
     let SET = params.get('set') || 'types';
     if (!['types', 'side', 'full'].includes(SET)) SET = 'types';
     const SIZE = parseInt(params.get('size') || '384', 10);
-    const MARKER = (params.get('marker') || 'real');   // real（本物の駒面）/ koma（自作駒風）/ pattern（抽象・高追従）
+    let MARKER = params.get('marker') || 'std';        // std（一般・二字駒）/ real（装飾・赤木地）/ koma（自作駒風）/ pattern（抽象）
+    if (!['std', 'real', 'koma', 'pattern'].includes(MARKER)) MARKER = 'std';
+    const FACE_DIR = { std: 'koma-std', real: 'koma' }; // 駒面画像のフォルダ
+    const IS_FACE = !!FACE_DIR[MARKER];
     const pieceList = buildPieceList(SET).slice(0, 40);
     const N = pieceList.length;
-    document.querySelectorAll('#setbtns a').forEach(a => a.classList.toggle('on', a.dataset.set === SET));
-    document.getElementById('meta').textContent = `セット: ${SET} / マーカー ${N} 枚 / maxTrack ${N}`;
-    log(`set=${SET}, N=${N}, size=${SIZE}`);
+    document.querySelectorAll('#setbtns a').forEach(a => { a.href = `?set=${a.dataset.set}&marker=${MARKER}`; a.classList.toggle('on', a.dataset.set === SET); });
+    document.querySelectorAll('#markerbtns a').forEach(a => { a.href = `?set=${SET}&marker=${a.dataset.marker}`; a.classList.toggle('on', a.dataset.marker === MARKER); });
+    document.getElementById('meta').textContent = `セット: ${SET} / 駒面: ${MARKER} / ${N} 枚`;
+    log(`set=${SET}, marker=${MARKER}, N=${N}, size=${SIZE}`);
     log('secure? ' + window.isSecureContext + ' / getUserMedia? ' + !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
 
     // ---------- マーカー生成 ----------
@@ -226,7 +236,7 @@
         const im = new Image();
         im.onload = () => { faceImg[k] = im; res(); };
         im.onerror = () => { log('face load fail: ' + k, 'e'); res(); };
-        im.src = `./assets/koma/${k}.svg`;
+        im.src = `./assets/${FACE_DIR[MARKER]}/${k}.svg`;
       })));
       log('faces loaded: ' + Object.keys(faceImg).length + '/' + keys.length);
     }
@@ -268,7 +278,7 @@
       });
     }
     async function buildMarkers() {
-      if (MARKER === 'real') await loadFaces();
+      if (IS_FACE) await loadFaces();
       const typeCount = {};
       markers = pieceList.map((p, i) => {
         typeCount[p.key + p.owner] = (typeCount[p.key + p.owner] || 0) + 1;
@@ -276,7 +286,7 @@
         const sameType = pieceList.filter(q => q.key === p.key && q.owner === p.owner).length;
         const label = sameType > 1 ? String(within) : '';
         let canvas;
-        if (MARKER === 'real') canvas = makeMarkerReal(i+1, p.key, label, p.owner, SIZE);
+        if (IS_FACE) canvas = makeMarkerReal(i+1, p.key, label, p.owner, SIZE);
         else if (MARKER === 'pattern') canvas = makeMarkerPattern(i+1, p.kanji, label, p.owner, SIZE);
         else canvas = makeMarkerKoma(i+1, p.kanji, label, p.owner, SIZE);
         return { piece: p, label, canvas };

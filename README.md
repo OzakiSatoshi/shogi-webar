@@ -14,12 +14,14 @@ iOS Safari・Android Chrome 両対応。
 14種の駒キャラ（`pieces.js`）を立ててアイドル演出する。
 
 - セット選択 `?set=`：`types`（全14種・既定）／`side`（先手20枚）／`full`（両陣40枚）
-- マーカー種別 `?marker=`：`real`（本物の駒面・既定）／`koma`（自作の駒風）／`pattern`（抽象・最大追従）
+- マーカー種別 `?marker=`（UIのボタンでも切替）：
+  - `std`（**一般・二字駒**・既定）／`real`（装飾・赤木地一字）／`koma`（自作の駒風）／`pattern`（抽象・最大追従）
 - 各マーカー＝**駒面＋駒ごと固有の杢（追従＆同種駒の識別）**。後手は△▽で区別し180°反転。
 - 画面に**印刷用マーカーシート**を表示。上部に「表示中 k/N 駒」、左上に FPS。
 
-> **駒面画像のクレジット**：`real` の駒面は **Ka-hu / shogi-pieces**（`kanji_red_wood`）を使用。
-> ライセンス **CC BY 4.0**（表示）。https://github.com/Ka-hu/shogi-pieces / 詳細は `assets/koma/CREDITS.md`。
+> **駒面画像のクレジット**
+> - `std`（一般・二字駒）: **orangain / shogi-piece-images**（原作 Hari Seldon@Wikimedia）/ **CC BY-SA 3.0**。`assets/koma-std/CREDITS.md`
+> - `real`（装飾・赤木地）: **Ka-hu / shogi-pieces** `kanji_red_wood` / **CC BY 4.0**。`assets/koma/CREDITS.md`
 
 ### 駒キャラ（`pieces.js` / ギャラリー `gallery.html`）
 - A-Frame プリミティブのみで作る14種（基本8＋成6）。鎧・兜・武器・マント・翼・宝石・発光・成りオーラ等。
