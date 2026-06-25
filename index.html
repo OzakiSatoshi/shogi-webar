@@ -12,11 +12,11 @@
 
   <style>
     * { box-sizing: border-box; }
-    html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", sans-serif; }
+    html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", sans-serif; background:#000; }
 
-    /* ステータス／案内オーバーレイ */
+    /* 起動前の案内オーバーレイ */
     #ui {
-      position: fixed; inset: 0; z-index: 10;
+      position: fixed; inset: 0; z-index: 30;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       padding: 24px; text-align: center; color: #fff;
       background: linear-gradient(160deg, #1b2a4a, #0c1424);
@@ -25,41 +25,57 @@
     #ui.hidden { opacity: 0; pointer-events: none; }
     #ui h1 { font-size: 20px; margin: 0 0 8px; }
     #ui p { font-size: 14px; line-height: 1.7; opacity: .9; margin: 6px 0; max-width: 340px; }
-    #ui a { color: #8ec5ff; }
     #startBtn {
       margin-top: 20px; padding: 14px 28px; font-size: 16px; font-weight: 700;
       color: #0c1424; background: #ffd24a; border: none; border-radius: 999px; cursor: pointer;
     }
-    #startBtn:active { transform: scale(.97); }
+    #startBtn:disabled { opacity: .6; }
     #marker { margin-top: 18px; width: 120px; border-radius: 8px; border: 3px solid rgba(255,255,255,.25); }
 
-    /* トラッキング状態バッジ（AR起動後に表示） */
+    /* トラッキング状態バッジ */
     #status {
-      position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 9;
+      position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 20;
       padding: 8px 16px; border-radius: 999px; font-size: 13px; font-weight: 700;
-      background: rgba(0,0,0,.55); color: #fff; backdrop-filter: blur(4px);
+      background: rgba(0,0,0,.55); color: #fff;
       transition: background .2s ease;
     }
-    #status.found { background: rgba(34, 160, 90, .85); }
+    #status.found { background: rgba(34, 160, 90, .9); }
     #status.hidden { display: none; }
+
+    /* 画面上のデバッグログ（スマホで状況を確認するため） */
+    #log {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 25;
+      max-height: 38vh; overflow-y: auto;
+      margin: 0; padding: 8px 10px;
+      font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px; line-height: 1.45;
+      color: #b8f5c8; background: rgba(0,0,0,.62); white-space: pre-wrap; word-break: break-all;
+    }
+    #log .e { color: #ff8a8a; }
+    #log .w { color: #ffd24a; }
+    #logToggle {
+      position: fixed; right: 10px; bottom: calc(38vh + 6px); z-index: 26;
+      padding: 6px 12px; font-size: 12px; border: none; border-radius: 6px;
+      background: rgba(0,0,0,.6); color:#fff;
+    }
   </style>
 </head>
 <body>
-  <!-- 起動前の案内 / 権限・非対応フォールバック -->
   <div id="ui">
     <h1>将棋WebAR — 歩兵プロトタイプ</h1>
     <p>背面カメラで下のマーカー画像を映すと、その上にローポリの「歩兵」が出現し、待機モーションで揺れます。</p>
-    <p>マーカーは画面・印刷どちらでもOK。下の画像を別端末やPCで表示しても認識します。</p>
+    <p>マーカーは別の画面（PC/タブレット）に表示するか、印刷して映してください。</p>
     <img id="marker" src="https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.png" alt="認識用マーカー画像" />
     <button id="startBtn">カメラを起動してARを開始</button>
     <p id="note" style="margin-top:14px; font-size:12px; opacity:.65;">
-      ※ iPhone は Safari、Android は Chrome を推奨。カメラ利用には HTTPS（または localhost）が必要です。
+      ※ iPhone は Safari、Android は Chrome 推奨。
     </p>
   </div>
 
   <div id="status" class="hidden">マーカーを探しています…</div>
 
-  <!-- A-Frame / MindAR シーン -->
+  <button id="logToggle">ログ表示/非表示</button>
+  <pre id="log"></pre>
+
   <a-scene
     mindar-image="imageTargetSrc: https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/card-example/card.mind; autoStart: false; uiScanning: no; uiLoading: no; uiError: no;"
     color-space="sRGB"
@@ -69,94 +85,112 @@
 
     <a-assets></a-assets>
 
-    <!-- ライト -->
     <a-entity light="type: ambient; intensity: 0.9;"></a-entity>
     <a-entity light="type: directional; intensity: 0.7;" position="0.5 1 1"></a-entity>
 
-    <!-- MindAR のカメラ -->
     <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
-    <!--
-      マーカー（targetIndex: 0）に追従するアンカー。
-      MindAR の画像ターゲット座標系: X=右, Y=上(画像の縦方向), Z=手前(カメラ側)。
-      マーカー幅が約1ユニットに正規化される。
-    -->
-    <a-entity mindar-image-target="targetIndex: 0">
-
-      <!-- 歩兵キャラ本体: 全体をこのリグでまとめ、アイドルアニメをかける -->
+    <a-entity id="targetAnchor" mindar-image-target="targetIndex: 0">
       <a-entity id="pawn"
         position="0 0 0.02"
         scale="0.35 0.35 0.35"
         animation__bob="property: position; from: 0 0 0.02; to: 0 0.12 0.02; dir: alternate; dur: 1100; loop: true; easing: easeInOutSine"
         animation__spin="property: rotation; from: 0 -8 0; to: 0 8 0; dir: alternate; dur: 1700; loop: true; easing: easeInOutSine">
 
-        <!-- 胴体: 赤い直方体 -->
         <a-box color="#d23b3b" depth="0.45" height="0.5" width="0.6" position="0 0.25 0"></a-box>
-
-        <!-- 頭: 黄色いとんがり（円錐） -->
         <a-cone color="#ffd24a" radius-bottom="0.28" radius-top="0" height="0.4" position="0 0.7 0"></a-cone>
-
-        <!-- 目（簡易・正面 = +Z 側） -->
         <a-sphere color="#1b1b1b" radius="0.04" position="-0.1 0.55 0.24"></a-sphere>
         <a-sphere color="#1b1b1b" radius="0.04" position="0.1 0.55 0.24"></a-sphere>
-
-        <!-- 槍: 細い円柱 + 先端の円錐（右手側） -->
         <a-cylinder color="#9a6b3f" radius="0.025" height="1.0" position="0.4 0.5 0"></a-cylinder>
         <a-cone color="#cfd3da" radius-bottom="0.06" radius-top="0" height="0.18" position="0.4 1.05 0"></a-cone>
-
-        <!-- 足元の接地リング（うっすら影代わり） -->
-        <a-ring color="#000000" opacity="0.18" radius-inner="0.1" radius-outer="0.34"
-          rotation="-90 0 0" position="0 0.005 0"></a-ring>
+        <a-ring color="#000000" opacity="0.18" radius-inner="0.1" radius-outer="0.34" rotation="-90 0 0" position="0 0.005 0"></a-ring>
       </a-entity>
-
     </a-entity>
   </a-scene>
 
   <script>
+    // ---- 画面上ログ ----
+    const logEl = document.getElementById('log');
+    function log(msg, cls) {
+      const t = new Date().toISOString().substr(11, 8);
+      const line = document.createElement('span');
+      if (cls) line.className = cls;
+      line.textContent = `[${t}] ${msg}\n`;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+    document.getElementById('logToggle').addEventListener('click', () => {
+      logEl.style.display = (logEl.style.display === 'none') ? 'block' : 'none';
+    });
+    window.addEventListener('error', (e) => log('window error: ' + (e.message || e), 'e'));
+    window.addEventListener('unhandledrejection', (e) => log('promise rejected: ' + (e.reason && e.reason.message || e.reason), 'e'));
+
+    log('page loaded. UA=' + navigator.userAgent.substr(0, 60));
+    log('secure context (HTTPS/localhost)? ' + window.isSecureContext);
+    log('getUserMedia? ' + !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
+
     const ui = document.getElementById('ui');
     const startBtn = document.getElementById('startBtn');
     const note = document.getElementById('note');
     const statusEl = document.getElementById('status');
     const sceneEl = document.querySelector('a-scene');
+    const target = document.getElementById('targetAnchor');
 
-    // 簡易な対応チェック（カメラAPI）
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      startBtn.disabled = true;
-      note.textContent = '※ このブラウザはカメラAPI(getUserMedia)に対応していません。Safari/Chrome の最新版をお使いください。';
-    }
+    // ---- シーン/AR イベント ----
+    sceneEl.addEventListener('loaded', () => log('a-scene loaded'));
+    sceneEl.addEventListener('renderstart', () => log('renderstart'));
+    sceneEl.addEventListener('arReady', () => log('arReady (MindAR 準備完了)'));
+    sceneEl.addEventListener('arError', (e) => log('arError: ' + JSON.stringify(e.detail || {}), 'e'));
 
-    // ターゲット検出/ロストのイベントで状態バッジを更新
-    const target = document.querySelector('[mindar-image-target]');
     target.addEventListener('targetFound', () => {
+      log('targetFound ✅ 歩兵を表示');
       statusEl.textContent = '歩兵を表示中';
       statusEl.classList.add('found');
     });
     target.addEventListener('targetLost', () => {
+      log('targetLost');
       statusEl.textContent = 'マーカーを探しています…';
       statusEl.classList.remove('found');
     });
 
-    // ユーザー操作（タップ）を起点にAR開始 = iOS のカメラ権限要求に必要
-    startBtn.addEventListener('click', async () => {
+    if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) {
+      startBtn.disabled = true;
+      note.textContent = '※ このブラウザはカメラAPIに対応していません。';
+      log('getUserMedia 非対応のため停止', 'e');
+    }
+
+    // ---- 開始処理：シーン準備を待ってから start ----
+    function whenSceneReady(cb) {
+      if (sceneEl.hasLoaded) cb();
+      else sceneEl.addEventListener('loaded', cb, { once: true });
+    }
+
+    startBtn.addEventListener('click', () => {
       startBtn.disabled = true;
       startBtn.textContent = '起動中…';
-      try {
-        const mindarSystem = sceneEl.systems['mindar-image-system'];
-        await mindarSystem.start(); // カメラ起動 & トラッキング開始
-        ui.classList.add('hidden');
-        statusEl.classList.remove('hidden');
-      } catch (e) {
-        console.error(e);
-        startBtn.disabled = false;
-        startBtn.textContent = 'カメラを起動してARを開始';
-        note.textContent = '※ カメラを起動できませんでした。権限の許可、HTTPS配信、ブラウザ対応をご確認ください。詳細: ' + (e && e.message ? e.message : e);
-      }
+      log('startBtn tapped');
+
+      whenSceneReady(async () => {
+        const arSystem = sceneEl.systems['mindar-image-system'];
+        if (!arSystem) { log('mindar-image-system が見つかりません', 'e'); return; }
+        log('mindar-image-system OK, start() 呼び出し');
+        try {
+          await arSystem.start();
+          log('start() 完了。カメラ稼働中。マーカーを映してください', 'w');
+          ui.classList.add('hidden');
+          statusEl.classList.remove('hidden');
+        } catch (e) {
+          log('start() 失敗: ' + (e && e.message ? e.message : e), 'e');
+          startBtn.disabled = false;
+          startBtn.textContent = 'カメラを起動してARを開始';
+          note.textContent = 'カメラを起動できませんでした。下部ログをご確認ください。';
+        }
+      });
     });
 
-    // 離脱時にカメラを停止（リソース解放）
     window.addEventListener('beforeunload', () => {
-      const mindarSystem = sceneEl.systems['mindar-image-system'];
-      if (mindarSystem) mindarSystem.stop();
+      const arSystem = sceneEl.systems['mindar-image-system'];
+      if (arSystem) arSystem.stop();
     });
   </script>
 </body>
