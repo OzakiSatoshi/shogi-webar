@@ -131,7 +131,7 @@
     let SET = params.get('set') || 'types';
     if (!['types', 'side', 'full'].includes(SET)) SET = 'types';
     const SIZE = parseInt(params.get('size') || '384', 10);
-    const MARKER = (params.get('marker') || 'koma');   // koma（駒風）/ pattern（抽象・高追従）
+    const MARKER = (params.get('marker') || 'real');   // real（本物の駒面）/ koma（自作駒風）/ pattern（抽象・高追従）
     const pieceList = buildPieceList(SET).slice(0, 40);
     const N = pieceList.length;
     document.querySelectorAll('#setbtns a').forEach(a => a.classList.toggle('on', a.dataset.set === SET));
@@ -218,30 +218,72 @@
       return c;
     }
 
-    const makeMarker = (MARKER === 'pattern') ? makeMarkerPattern : makeMarkerKoma;
+    // 本物の駒面画像（Ka-hu/shogi-pieces, CC BY 4.0）を読み込む
+    const faceImg = {};
+    async function loadFaces() {
+      const keys = [...new Set(pieceList.map(p => p.key))];
+      await Promise.all(keys.map(k => new Promise(res => {
+        const im = new Image();
+        im.onload = () => { faceImg[k] = im; res(); };
+        im.onerror = () => { log('face load fail: ' + k, 'e'); res(); };
+        im.src = `./assets/koma/${k}.svg`;
+      })));
+      log('faces loaded: ' + Object.keys(faceImg).length + '/' + keys.length);
+    }
 
-    // 同種駒の通し番号付け（歩1..9 など）
-    const typeCount = {};
-    const markers = pieceList.map((p, i) => {
-      typeCount[p.key + p.owner] = (typeCount[p.key + p.owner] || 0) + 1;
-      const within = typeCount[p.key + p.owner];
-      const sameType = pieceList.filter(q => q.key === p.key && q.owner === p.owner).length;
-      const label = sameType > 1 ? String(within) : '';
-      return { piece: p, label, canvas: makeMarker(i + 1, p.kanji, label, p.owner, SIZE) };
-    });
-    log(`generated ${markers.length} markers`);
+    // 本物の駒面マーカー：標準の駒面＋駒ごと固有の杢（追従＆同種駒の識別）
+    function makeMarkerReal(gIndex, key, label, owner, size) {
+      const c = document.createElement('canvas'); c.width = size; c.height = size;
+      const x = c.getContext('2d'); const rnd = seededRnd(gIndex);
+      x.fillStyle = '#241a10'; x.fillRect(0, 0, size, size);
+      const img = faceImg[key];
+      const m = size * 0.06, maxW = size - 2*m, maxH = size - 2*m;
+      let dw = maxW, dh = maxH;
+      if (img && img.width) { const ar = img.width / img.height; dh = maxH; dw = dh*ar; if (dw > maxW) { dw = maxW; dh = dw/ar; } }
+      x.save(); x.translate(size/2, size/2); if (owner) x.rotate(Math.PI);
+      if (img) x.drawImage(img, -dw/2, -dh/2, dw, dh);
+      // 固有の杢（駒面に薄く重ね、同種でも個体差を出す＝追従＆識別）
+      for (let i = 0; i < 55; i++) {
+        const px = (rnd()-0.5)*dw*0.9, py = (rnd()-0.5)*dh*0.92, r = 2 + rnd()*6;
+        x.fillStyle = rnd() < 0.5 ? `rgba(70,45,20,${0.18 + rnd()*0.32})` : `rgba(255,246,222,${0.12 + rnd()*0.26})`;
+        x.beginPath(); x.ellipse(px, py, r, r*(0.4 + rnd()*0.7), rnd()*6, 0, 6.283); x.fill();
+      }
+      x.restore();
+      const tag = (owner ? '▽' : '△') + label;
+      x.font = `bold ${(size*0.09)|0}px sans-serif`; x.textAlign = 'left'; x.textBaseline = 'top';
+      x.lineWidth = size*0.025; x.strokeStyle = 'rgba(255,255,255,.75)'; x.strokeText(tag, size*0.04, size*0.04);
+      x.fillStyle = '#222'; x.fillText(tag, size*0.04, size*0.04);
+      return c;
+    }
 
-    // 印刷用グリッド
-    (function drawGrid() {
+    let markers = [];
+    function drawGrid() {
       const cols = Math.ceil(Math.sqrt(N)), rows = Math.ceil(N/cols), cell = 180, pad = 10;
       const g = document.getElementById('gridCanvas');
       g.width = cols*cell + pad*2; g.height = rows*cell + pad*2;
       const gx = g.getContext('2d'); gx.fillStyle = '#fff'; gx.fillRect(0,0,g.width,g.height);
-      markers.forEach((m, idx) => {
+      markers.forEach((mk, idx) => {
         const cx = pad + (idx%cols)*cell, cy = pad + ((idx/cols)|0)*cell;
-        gx.drawImage(m.canvas, cx+6, cy+6, cell-12, cell-12);
+        gx.drawImage(mk.canvas, cx+6, cy+6, cell-12, cell-12);
       });
-    })();
+    }
+    async function buildMarkers() {
+      if (MARKER === 'real') await loadFaces();
+      const typeCount = {};
+      markers = pieceList.map((p, i) => {
+        typeCount[p.key + p.owner] = (typeCount[p.key + p.owner] || 0) + 1;
+        const within = typeCount[p.key + p.owner];
+        const sameType = pieceList.filter(q => q.key === p.key && q.owner === p.owner).length;
+        const label = sameType > 1 ? String(within) : '';
+        let canvas;
+        if (MARKER === 'real') canvas = makeMarkerReal(i+1, p.key, label, p.owner, SIZE);
+        else if (MARKER === 'pattern') canvas = makeMarkerPattern(i+1, p.kanji, label, p.owner, SIZE);
+        else canvas = makeMarkerKoma(i+1, p.kanji, label, p.owner, SIZE);
+        return { piece: p, label, canvas };
+      });
+      log(`generated ${markers.length} markers (${MARKER})`);
+      drawGrid();
+    }
 
     // ---------- IndexedDB キャッシュ ----------
     function idbOpen(){ return new Promise((res,rej)=>{ const r=indexedDB.open('mindcache',1);
@@ -348,6 +390,7 @@
       if (!(window.MINDAR && window.MINDAR.IMAGE && window.MINDAR.IMAGE.Compiler)) { compileText.textContent='Compilerが読み込めませんでした'; log('no Compiler','e'); return; }
       if (!window.shogiPieceEntityHTML) { compileText.textContent='pieces.js が読み込めませんでした'; log('no pieces.js','e'); return; }
       try {
+        await buildMarkers();                          // マーカー生成（real は駒面画像を読込）
         const bytes = await buildMind();
         const blob = new Blob([bytes], { type:'application/octet-stream' });
         const url = URL.createObjectURL(blob);
