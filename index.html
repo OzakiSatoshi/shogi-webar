@@ -131,6 +131,7 @@
     let SET = params.get('set') || 'types';
     if (!['types', 'side', 'full'].includes(SET)) SET = 'types';
     const SIZE = parseInt(params.get('size') || '384', 10);
+    const MARKER = (params.get('marker') || 'koma');   // koma（駒風）/ pattern（抽象・高追従）
     const pieceList = buildPieceList(SET).slice(0, 40);
     const N = pieceList.length;
     document.querySelectorAll('#setbtns a').forEach(a => a.classList.toggle('on', a.dataset.set === SET));
@@ -138,14 +139,63 @@
     log(`set=${SET}, N=${N}, size=${SIZE}`);
     log('secure? ' + window.isSecureContext + ' / getUserMedia? ' + !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
 
-    // ---------- マーカー生成（固有パターン＋駒の漢字）----------
-    function makeMarker(gIndex, kanji, label, owner, size) {
+    // ---------- マーカー生成 ----------
+    function seededRnd(gIndex) {
+      let seed = (gIndex * 2654435761) % 2147483647; if (seed <= 0) seed += 2147483646;
+      return () => { seed = (seed * 48271) % 2147483647; return seed / 2147483647; };
+    }
+
+    // 将棋の駒風マーカー：五角形の木地＋毛筆風の漢字＋駒ごと固有の杢・節（追従＆個体識別）
+    function makeMarkerKoma(gIndex, kanji, label, owner, size) {
       const c = document.createElement('canvas'); c.width = size; c.height = size;
       const x = c.getContext('2d');
+      const rnd = seededRnd(gIndex);
+      // 盤のような濃い木地の背景（駒とのコントラストで検出しやすく）
+      x.fillStyle = '#241a10'; x.fillRect(0, 0, size, size);
+      // 駒の五角形（上がとがり下が広い）
+      const m = size * 0.09, top = m, bottom = size - m, cx = size / 2, w = size - 2 * m;
+      const shoulder = top + (bottom - top) * 0.2;
+      const pts = [[cx, top], [cx - w*0.34, shoulder], [cx - w*0.42, bottom], [cx + w*0.42, bottom], [cx + w*0.34, shoulder]];
+      const pent = () => { x.beginPath(); x.moveTo(pts[0][0], pts[0][1]); for (let i=1;i<pts.length;i++) x.lineTo(pts[i][0], pts[i][1]); x.closePath(); };
+      // 木地グラデ
+      const g = x.createLinearGradient(0, top, 0, bottom);
+      g.addColorStop(0, '#f2d79e'); g.addColorStop(1, '#d3a85d');
+      pent(); x.fillStyle = g; x.fill();
+      // 駒内に固有の杢目＋節（クリップ）
+      x.save(); pent(); x.clip();
+      for (let i = 0; i < 26; i++) {       // 木目の波線
+        const yy = top + (bottom - top) * rnd();
+        x.strokeStyle = `rgba(120,78,38,${0.12 + rnd()*0.26})`; x.lineWidth = 1 + rnd()*2.5;
+        x.beginPath(); x.moveTo(0, yy);
+        for (let xx = 0; xx <= size; xx += size/8) x.lineTo(xx, yy + Math.sin(xx*0.03 + rnd()*6) * (3 + rnd()*6));
+        x.stroke();
+      }
+      for (let i = 0; i < 60; i++) {        // 節・斑（高コントラスト＝特徴点）
+        const px = rnd()*size, py = top + (bottom-top)*rnd(), r = 2 + rnd()*7;
+        x.fillStyle = rnd() < 0.5 ? `rgba(86,52,22,${0.3 + rnd()*0.5})` : `rgba(255,242,212,${0.2 + rnd()*0.4})`;
+        x.beginPath(); x.ellipse(px, py, r, r*(0.4 + rnd()*0.8), rnd()*6, 0, 6.283); x.fill();
+      }
+      x.restore();
+      // 毛筆風の漢字
+      const fs = kanji.length > 1 ? size*0.24 : size*0.42;
+      x.font = `bold ${fs|0}px "Hiragino Mincho ProN", "Yu Mincho", "Noto Serif JP", serif`;
+      x.textAlign = 'center'; x.textBaseline = 'middle';
+      x.fillStyle = owner ? '#5a1810' : '#241008';
+      x.fillText(kanji, cx, (top + bottom) / 2 - size*0.01);
+      // 駒の輪郭
+      pent(); x.lineWidth = Math.max(3, size*0.018); x.strokeStyle = '#6e4a22'; x.stroke();
+      // 落款風の通し番号＋陣（先手△ / 後手▽）
+      const tag = (owner ? '▽' : '△') + label;
+      x.font = `bold ${(size*0.1)|0}px sans-serif`; x.textAlign = 'center'; x.textBaseline = 'alphabetic';
+      x.fillStyle = '#5a3a1a'; x.fillText(tag, cx, bottom - size*0.035);
+      return c;
+    }
+
+    // 抽象パターン（最大追従・フォールバック）
+    function makeMarkerPattern(gIndex, kanji, label, owner, size) {
+      const c = document.createElement('canvas'); c.width = size; c.height = size;
+      const x = c.getContext('2d'); const rnd = seededRnd(gIndex);
       x.fillStyle = '#fff'; x.fillRect(0, 0, size, size);
-      let seed = (gIndex * 2654435761) % 2147483647; if (seed <= 0) seed += 2147483646;
-      const rnd = () => { seed = (seed * 48271) % 2147483647; return seed / 2147483647; };
-      // 追従用の固有な高コントラスト・パターン
       for (let i = 0; i < 150; i++) {
         x.fillStyle = `rgb(${(rnd()*256)|0},${(rnd()*256)|0},${(rnd()*256)|0})`;
         const px = rnd()*size, py = rnd()*size, s = 4 + rnd()*size*0.12;
@@ -157,18 +207,18 @@
         x.restore();
       }
       x.strokeStyle = '#000'; x.lineWidth = Math.max(3, size*0.035); x.strokeRect(0,0,size,size);
-      // 駒の漢字（人が物理駒に対応付ける用）
       const fs = kanji.length > 1 ? size*0.26 : size*0.4;
       x.font = `bold ${fs|0}px sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle';
       x.lineWidth = size*0.04; x.strokeStyle = '#fff'; x.strokeText(kanji, size/2, size/2);
       x.fillStyle = owner ? '#7a1020' : '#101a30'; x.fillText(kanji, size/2, size/2);
-      // 通し番号＋陣（先手△ / 後手▽）
       x.font = `bold ${(size*0.11)|0}px sans-serif`; x.textAlign = 'left'; x.textBaseline = 'top';
       const tag = (owner ? '▽' : '△') + label;
       x.lineWidth = size*0.03; x.strokeStyle = '#fff'; x.strokeText(tag, size*0.06, size*0.05);
       x.fillStyle = '#000'; x.fillText(tag, size*0.06, size*0.05);
       return c;
     }
+
+    const makeMarker = (MARKER === 'pattern') ? makeMarkerPattern : makeMarkerKoma;
 
     // 同種駒の通し番号付け（歩1..9 など）
     const typeCount = {};
@@ -204,7 +254,7 @@
     function setProgress(p){ barFill.style.width = Math.max(0,Math.min(100,p)) + '%'; }
 
     async function buildMind() {
-      const key = `mind-pieces-v1-${SET}-s${SIZE}`;
+      const key = `mind-pieces-v2-${MARKER}-${SET}-s${SIZE}`;
       try {
         const cached = await idbGet(key);
         if (cached && cached.byteLength) { log('cache hit: ' + key); compileText.textContent='コンパイル済み（キャッシュ）'; setProgress(100); return cached; }
