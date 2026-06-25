@@ -3,18 +3,17 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-  <title>将棋WebAR — 駒キャラAR</title>
+  <title>将棋WebAR — スケーリング検証 (scaling)</title>
 
   <!-- A-Frame 1.3.0（MindAR 1.2.x 対応） -->
   <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
-  <!-- MindAR：AR実行コンポーネント＋Compiler を内包 -->
+  <!-- MindAR：AR実行コンポーネント＋Compiler（window.MINDAR.IMAGE.Compiler）を内包 -->
   <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
-  <!-- 駒キャラのビルダー -->
-  <script src="./pieces.js"></script>
 
   <style>
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", sans-serif; }
+
     #ui {
       position: fixed; inset: 0; z-index: 30; overflow-y: auto;
       display: flex; flex-direction: column; align-items: center;
@@ -23,11 +22,11 @@
       transition: opacity .4s ease;
     }
     #ui.hidden { opacity: 0; pointer-events: none; }
-    #ui h1 { font-size: 19px; margin: 6px 0; }
-    #ui p { font-size: 13px; line-height: 1.6; opacity: .9; margin: 5px 0; max-width: 390px; }
+    #ui h1 { font-size: 18px; margin: 6px 0; }
+    #ui p { font-size: 13px; line-height: 1.6; opacity: .9; margin: 5px 0; max-width: 380px; }
     #gridWrap { margin: 12px 0; }
-    #gridCanvas { width: min(90vw, 460px); height: auto; border-radius: 10px; border: 3px solid rgba(255,255,255,.25); background:#fff; }
-    #compileBox { margin: 8px 0 4px; width: min(90vw, 460px); }
+    #gridCanvas { width: min(86vw, 420px); height: auto; border-radius: 10px; border: 3px solid rgba(255,255,255,.25); background:#fff; }
+    #compileBox { margin: 8px 0 4px; width: min(86vw, 420px); }
     #bar { height: 10px; background: rgba(255,255,255,.18); border-radius: 999px; overflow: hidden; }
     #barFill { height: 100%; width: 0%; background: #ffd24a; transition: width .2s ease; }
     #compileText { font-size: 12px; margin-top: 6px; opacity: .9; }
@@ -36,10 +35,6 @@
       color: #0c1424; background: #ffd24a; border: none; border-radius: 999px; cursor: pointer;
     }
     #startBtn:disabled { opacity: .45; }
-    .setbtns { margin-top: 6px; display: flex; gap: 8px; }
-    .setbtns a { font-size: 12px; padding: 5px 12px; border-radius: 999px; text-decoration: none;
-      background: rgba(255,255,255,.12); color:#fff; border: 1px solid transparent; }
-    .setbtns a.on { border-color: #ffd24a; background: rgba(255,210,74,.2); }
 
     #status {
       position: fixed; top: 12px; left: 50%; transform: translateX(-50%); z-index: 20;
@@ -50,10 +45,11 @@
     #status.hidden { display: none; }
     #fps {
       position: fixed; top: 12px; left: 12px; z-index: 20;
-      padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 700;
+      padding: 6px 10px; border-radius: 8px; font-size: 13px; font-weight: 700;
       font-family: ui-monospace, Menlo, Consolas, monospace; background: rgba(0,0,0,.55); color: #7fe6ff;
     }
     #fps.hidden { display: none; }
+
     #log {
       position: fixed; left: 0; right: 0; bottom: 0; z-index: 25;
       max-height: 32vh; overflow-y: auto; margin: 0; padding: 8px 10px;
@@ -69,22 +65,19 @@
 </head>
 <body>
   <div id="ui">
-    <h1>将棋WebAR — 駒キャラAR</h1>
-    <p>下の<strong>マーカーシート</strong>を別画面（PC/タブレット）に表示、または印刷して、各マーカーを物理駒の近くに置きます。
-       カメラで映すと、各マーカー（駒の漢字付き）の上に対応する<strong>3Dキャラ</strong>が立ちます。</p>
-    <div class="setbtns" id="setbtns">
-      <a href="?set=types" data-set="types">全14種</a>
-      <a href="?set=side" data-set="side">先手20枚</a>
-      <a href="?set=full" data-set="full">両陣40枚</a>
-    </div>
+    <h1>マルチマーカー・スケーリング検証</h1>
+    <p>下のマーカーシートを<strong>別画面（PC/タブレット）に表示、または印刷</strong>して、カメラで映してください。
+       各マーカー上に番号付きの駒が立ちます。<strong>同時に何枚追従できるか</strong>と<strong>FPS</strong>を測ります。</p>
     <div id="gridWrap"><canvas id="gridCanvas"></canvas></div>
     <div id="compileBox">
       <div id="bar"><div id="barFill"></div></div>
       <div id="compileText">準備中…</div>
     </div>
     <button id="startBtn" disabled>カメラを起動してARを開始</button>
-    <p id="meta" style="margin-top:10px; font-size:12px; opacity:.6;"></p>
-    <p style="font-size:12px; opacity:.55;">iPhoneはSafari、AndroidはChrome推奨。初回はマーカーのコンパイルに時間がかかります（結果はキャッシュ）。</p>
+    <p style="margin-top:10px; font-size:12px; opacity:.6;">
+      枚数は URL の <code>?n=</code> で変更可（例 <code>?n=12</code>）。現在の枚数は下に表示。iPhoneはSafari、AndroidはChrome推奨。
+    </p>
+    <p id="meta" style="font-size:12px; opacity:.6;"></p>
   </div>
 
   <div id="status" class="hidden">マーカーを探しています…</div>
@@ -104,92 +97,50 @@
     window.addEventListener('error', e => log('window error: ' + (e.message||e), 'e'));
     window.addEventListener('unhandledrejection', e => log('promise rejected: ' + (e.reason && e.reason.message || e.reason), 'e'));
 
-    // ---------- セット定義 ----------
-    // 先手1陣の構成（20枚）
-    const SIDE = [
-      { key: 'ou',  kanji: '王', n: 1 },
-      { key: 'hi',  kanji: '飛', n: 1 },
-      { key: 'kaku',kanji: '角', n: 1 },
-      { key: 'kin', kanji: '金', n: 2 },
-      { key: 'gin', kanji: '銀', n: 2 },
-      { key: 'kei', kanji: '桂', n: 2 },
-      { key: 'kyo', kanji: '香', n: 2 },
-      { key: 'fu',  kanji: '歩', n: 9 },
-    ];
-    function buildPieceList(setName) {
-      const list = [];
-      if (setName === 'types') {
-        (window.SHOGI_PIECES || []).forEach(p => list.push({ key: p.key, kanji: p.kanji, owner: 0 }));
-      } else {
-        const owners = setName === 'full' ? [0, 1] : [0];
-        owners.forEach(owner => SIDE.forEach(c => { for (let j = 0; j < c.n; j++) list.push({ key: c.key, kanji: c.kanji, owner }); }));
-      }
-      return list;
-    }
-
+    // ---------- パラメータ ----------
     const params = new URLSearchParams(location.search);
-    let SET = params.get('set') || 'types';
-    if (!['types', 'side', 'full'].includes(SET)) SET = 'types';
+    const N = Math.max(1, Math.min(40, parseInt(params.get('n') || '6', 10)));
     const SIZE = parseInt(params.get('size') || '384', 10);
-    const pieceList = buildPieceList(SET).slice(0, 40);
-    const N = pieceList.length;
-    document.querySelectorAll('#setbtns a').forEach(a => a.classList.toggle('on', a.dataset.set === SET));
-    document.getElementById('meta').textContent = `セット: ${SET} / マーカー ${N} 枚 / maxTrack ${N}`;
-    log(`set=${SET}, N=${N}, size=${SIZE}`);
+    document.getElementById('meta').textContent = `マーカー枚数 N=${N} / 解像度=${SIZE}px / maxTrack=${N}`;
+    log(`params: N=${N}, size=${SIZE}`);
     log('secure? ' + window.isSecureContext + ' / getUserMedia? ' + !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia));
 
-    // ---------- マーカー生成（固有パターン＋駒の漢字）----------
-    function makeMarker(gIndex, kanji, label, owner, size) {
-      const c = document.createElement('canvas'); c.width = size; c.height = size;
+    // ---------- マーカー生成（決定論的）----------
+    function makeMarker(num, size){
+      const c = document.createElement('canvas'); c.width=size; c.height=size;
       const x = c.getContext('2d');
-      x.fillStyle = '#fff'; x.fillRect(0, 0, size, size);
-      let seed = (gIndex * 2654435761) % 2147483647; if (seed <= 0) seed += 2147483646;
-      const rnd = () => { seed = (seed * 48271) % 2147483647; return seed / 2147483647; };
-      // 追従用の固有な高コントラスト・パターン
-      for (let i = 0; i < 150; i++) {
+      x.fillStyle='#fff'; x.fillRect(0,0,size,size);
+      let seed = (num*2654435761) % 2147483647; if (seed<=0) seed += 2147483646;
+      const rnd = () => { seed=(seed*48271)%2147483647; return seed/2147483647; };
+      for (let i=0;i<160;i++){
         x.fillStyle = `rgb(${(rnd()*256)|0},${(rnd()*256)|0},${(rnd()*256)|0})`;
-        const px = rnd()*size, py = rnd()*size, s = 4 + rnd()*size*0.12;
-        x.save(); x.translate(px, py); x.rotate(rnd()*6.283);
-        const t = rnd();
-        if (t < 0.4) x.fillRect(-s/2, -s/2, s, s);
-        else if (t < 0.7) { x.beginPath(); x.arc(0,0,s/2,0,6.283); x.fill(); }
+        const px=rnd()*size, py=rnd()*size, s=4+rnd()*size*0.12;
+        x.save(); x.translate(px,py); x.rotate(rnd()*6.283);
+        const t=rnd();
+        if (t<0.4) x.fillRect(-s/2,-s/2,s,s);
+        else if (t<0.7){ x.beginPath(); x.arc(0,0,s/2,0,6.283); x.fill(); }
         else { x.beginPath(); x.moveTo(0,-s/2); x.lineTo(s/2,s/2); x.lineTo(-s/2,s/2); x.closePath(); x.fill(); }
         x.restore();
       }
-      x.strokeStyle = '#000'; x.lineWidth = Math.max(3, size*0.035); x.strokeRect(0,0,size,size);
-      // 駒の漢字（人が物理駒に対応付ける用）
-      const fs = kanji.length > 1 ? size*0.26 : size*0.4;
-      x.font = `bold ${fs|0}px sans-serif`; x.textAlign = 'center'; x.textBaseline = 'middle';
-      x.lineWidth = size*0.04; x.strokeStyle = '#fff'; x.strokeText(kanji, size/2, size/2);
-      x.fillStyle = owner ? '#7a1020' : '#101a30'; x.fillText(kanji, size/2, size/2);
-      // 通し番号＋陣（先手△ / 後手▽）
-      x.font = `bold ${(size*0.11)|0}px sans-serif`; x.textAlign = 'left'; x.textBaseline = 'top';
-      const tag = (owner ? '▽' : '△') + label;
-      x.lineWidth = size*0.03; x.strokeStyle = '#fff'; x.strokeText(tag, size*0.06, size*0.05);
-      x.fillStyle = '#000'; x.fillText(tag, size*0.06, size*0.05);
+      x.strokeStyle='#000'; x.lineWidth=Math.max(3,size*0.035); x.strokeRect(0,0,size,size);
+      x.font=`bold ${(size*0.42)|0}px sans-serif`; x.textAlign='center'; x.textBaseline='middle';
+      x.lineWidth=size*0.03; x.strokeStyle='#fff'; x.strokeText(String(num), size/2, size/2);
+      x.fillStyle='#000'; x.fillText(String(num), size/2, size/2);
       return c;
     }
+    const markers = [];
+    for (let i=1;i<=N;i++) markers.push({ num:i, canvas: makeMarker(i, SIZE) });
+    log(`generated ${N} markers`);
 
-    // 同種駒の通し番号付け（歩1..9 など）
-    const typeCount = {};
-    const markers = pieceList.map((p, i) => {
-      typeCount[p.key + p.owner] = (typeCount[p.key + p.owner] || 0) + 1;
-      const within = typeCount[p.key + p.owner];
-      const sameType = pieceList.filter(q => q.key === p.key && q.owner === p.owner).length;
-      const label = sameType > 1 ? String(within) : '';
-      return { piece: p, label, canvas: makeMarker(i + 1, p.kanji, label, p.owner, SIZE) };
-    });
-    log(`generated ${markers.length} markers`);
-
-    // 印刷用グリッド
-    (function drawGrid() {
-      const cols = Math.ceil(Math.sqrt(N)), rows = Math.ceil(N/cols), cell = 180, pad = 10;
+    // 印刷用グリッド表示
+    (function drawGrid(){
+      const cols = Math.ceil(Math.sqrt(N)), rows = Math.ceil(N/cols), cell=200, pad=10;
       const g = document.getElementById('gridCanvas');
       g.width = cols*cell + pad*2; g.height = rows*cell + pad*2;
-      const gx = g.getContext('2d'); gx.fillStyle = '#fff'; gx.fillRect(0,0,g.width,g.height);
+      const gx = g.getContext('2d'); gx.fillStyle='#fff'; gx.fillRect(0,0,g.width,g.height);
       markers.forEach((m, idx) => {
         const cx = pad + (idx%cols)*cell, cy = pad + ((idx/cols)|0)*cell;
-        gx.drawImage(m.canvas, cx+6, cy+6, cell-12, cell-12);
+        gx.drawImage(m.canvas, cx+8, cy+8, cell-16, cell-16);
       });
     })();
 
@@ -203,12 +154,14 @@
     const barFill = document.getElementById('barFill'), compileText = document.getElementById('compileText');
     function setProgress(p){ barFill.style.width = Math.max(0,Math.min(100,p)) + '%'; }
 
-    async function buildMind() {
-      const key = `mind-pieces-v1-${SET}-s${SIZE}`;
+    // ---------- マーカーを .mind にコンパイル（実機GPUで実行）----------
+    async function buildMind(){
+      const key = `mind-v1-n${N}-s${SIZE}`;
       try {
         const cached = await idbGet(key);
-        if (cached && cached.byteLength) { log('cache hit: ' + key); compileText.textContent='コンパイル済み（キャッシュ）'; setProgress(100); return cached; }
+        if (cached && cached.byteLength) { log('cache hit: ' + key + ' (' + cached.byteLength + 'B)'); compileText.textContent='コンパイル済み（キャッシュ）'; setProgress(100); return cached; }
       } catch(e){ log('idb get fail: ' + e, 'w'); }
+
       compileText.textContent = 'マーカーをコンパイル中…（初回のみ・実機GPUで実行）';
       log('compiling…');
       const images = await Promise.all(markers.map(m => loadImg(m.canvas.toDataURL('image/png'))));
@@ -222,25 +175,32 @@
       return bytes;
     }
 
-    // ---------- 駒キャラの target entity ----------
-    function targetHTML(i) {
-      const m = markers[i];
-      const ownerRot = m.piece.owner ? 180 : 0;          // 後手は180°反転
-      const inner = window.shogiPieceEntityHTML(m.piece.key, { scale: 0.32, bobDur: 1000 + (i % 5) * 90 });
-      return `<a-entity class="target" data-name="${m.piece.kanji}${m.label}" mindar-image-target="targetIndex: ${i}">
+    // ---------- 駒（番号付き・色分け）----------
+    function pawnHTML(k){
+      const hue = (k*47) % 360;
+      const dur = 1000 + (k%5)*90;
+      return `<a-entity class="target" data-name="駒${k}" mindar-image-target="targetIndex: ${k-1}">
         <a-entity rotation="90 0 0" position="0 0 0.01">
-          <a-entity rotation="0 ${ownerRot} 0">${inner}</a-entity>
+          <a-entity scale="0.35 0.35 0.35"
+            animation__bob="property: position; from: 0 0 0; to: 0 0.12 0; dir: alternate; dur: ${dur}; loop: true; easing: easeInOutSine">
+            <a-box color="hsl(${hue}, 70%, 50%)" depth="0.45" height="0.5" width="0.6" position="0 0.25 0"></a-box>
+            <a-cone color="#ffd24a" radius-bottom="0.28" radius-top="0" height="0.4" position="0 0.7 0"></a-cone>
+            <a-text value="${k}" align="center" color="#000" width="3" position="0 0.25 0.31"></a-text>
+            <a-ring color="#000" opacity="0.18" radius-inner="0.1" radius-outer="0.34" rotation="-90 0 0" position="0 0.005 0"></a-ring>
+          </a-entity>
         </a-entity>
       </a-entity>`;
     }
 
-    // ---------- AR シーン ----------
-    let sceneEl = null, tracked = 0;
+    // ---------- AR シーン構築 ----------
+    let sceneEl = null;
+    let tracked = 0;
     const statusEl = document.getElementById('status'), fpsEl = document.getElementById('fps');
     function refreshStatus(){
-      if (tracked>0){ statusEl.textContent = `表示中: ${tracked} / ${N} 駒`; statusEl.classList.add('tracking'); }
+      if (tracked>0){ statusEl.textContent = `同時追従: ${tracked} / ${N} 枚`; statusEl.classList.add('tracking'); }
       else { statusEl.textContent = 'マーカーを探しています…'; statusEl.classList.remove('tracking'); }
     }
+    // 自前FPS
     let _f=0,_t=performance.now();
     function fpsLoop(now){ _f++; if(now-_t>=1000){ fpsEl.textContent='FPS: '+_f; _f=0; _t=now; } requestAnimationFrame(fpsLoop); }
 
@@ -248,37 +208,37 @@
       const scene = document.createElement('a-scene');
       scene.setAttribute('mindar-image', `imageTargetSrc: ${blobUrl}; autoStart: false; maxTrack: ${N}; uiScanning: no; uiLoading: no; uiError: no;`);
       scene.setAttribute('color-space','sRGB');
-      scene.setAttribute('renderer','colorManagement: true, physicallyCorrectLights, exposure: 1.05');
+      scene.setAttribute('renderer','colorManagement: true, physicallyCorrectLights');
       scene.setAttribute('vr-mode-ui','enabled: false');
       scene.setAttribute('device-orientation-permission-ui','enabled: false');
-      let targets=''; for (let i=0;i<N;i++) targets += targetHTML(i);
+      let targets=''; for (let k=1;k<=N;k++) targets += pawnHTML(k);
       scene.innerHTML = `
-        <a-entity light="type: hemisphere; color: #cfe0ff; groundColor: #54402a; intensity: 0.7"></a-entity>
-        <a-entity light="type: directional; color: #fff4e0; intensity: 0.95" position="1 2 1.5"></a-entity>
-        <a-entity light="type: point; color: #88b4ff; intensity: 0.4; distance: 6" position="-1 1 1"></a-entity>
+        <a-entity light="type: ambient; intensity: 0.9;"></a-entity>
+        <a-entity light="type: directional; intensity: 0.7;" position="0.5 1 1"></a-entity>
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
         ${targets}`;
       document.body.appendChild(scene);
       scene.addEventListener('arReady', () => log('arReady', 'w'));
       scene.addEventListener('arError', (e) => log('arError: ' + JSON.stringify(e.detail||{}), 'e'));
 
+      // 'loaded' イベントに依存せず、MindARシステムが使えるようになり次第ボタンを有効化
       let readyDone = false;
       function onReady(reason){
         if (readyDone) return;
         const sys = scene.systems && scene.systems['mindar-image-system'];
-        if (!sys) return;
+        if (!sys) return; // まだシステム未準備
         readyDone = true;
         startBtn.disabled = false;
         startBtn.textContent = 'カメラを起動してARを開始';
         compileText.textContent = '準備完了 — 「カメラを起動」をタップしてください';
-        log('scene ready (' + reason + ')', 'w');
+        log('scene ready (' + reason + ') — start 有効化', 'w');
         try {
           document.querySelectorAll('.target').forEach(el => {
             const name = el.getAttribute('data-name');
             el.addEventListener('targetFound', () => { tracked++; log(`found ${name}（${tracked}/${N}）`); refreshStatus(); });
-            el.addEventListener('targetLost', () => { tracked=Math.max(0,tracked-1); log(`lost ${name}`); refreshStatus(); });
+            el.addEventListener('targetLost', () => { tracked=Math.max(0,tracked-1); log(`lost ${name}（${tracked}/${N}）`); refreshStatus(); });
           });
-        } catch(e){ log('listener err: ' + (e && e.message || e), 'e'); }
+        } catch(e){ log('listener attach error: ' + (e && e.message || e), 'e'); }
       }
       scene.addEventListener('loaded', () => onReady('loaded'));
       if (scene.hasLoaded) onReady('already-loaded');
@@ -286,7 +246,7 @@
       const iv = setInterval(() => {
         if (readyDone) { clearInterval(iv); return; }
         onReady('poll');
-        if (++tries > 50) { clearInterval(iv); if (!readyDone) { compileText.textContent = 'AR初期化に時間がかかっています（ログ確認）'; log('ready timeout', 'e'); } }
+        if (++tries > 50) { clearInterval(iv); if (!readyDone) { compileText.textContent = 'AR初期化に時間がかかっています（ログ確認）'; log('scene ready timeout', 'e'); } }
       }, 200);
       return scene;
     }
@@ -294,16 +254,22 @@
     // ---------- 起動フロー ----------
     const startBtn = document.getElementById('startBtn');
     (async function init(){
-      if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) { compileText.textContent='このブラウザはカメラAPIに非対応です'; log('no getUserMedia','e'); return; }
-      if (!(window.MINDAR && window.MINDAR.IMAGE && window.MINDAR.IMAGE.Compiler)) { compileText.textContent='Compilerが読み込めませんでした'; log('no Compiler','e'); return; }
-      if (!window.shogiPieceEntityHTML) { compileText.textContent='pieces.js が読み込めませんでした'; log('no pieces.js','e'); return; }
+      if (!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)) {
+        compileText.textContent='このブラウザはカメラAPIに非対応です'; log('no getUserMedia','e'); return;
+      }
+      if (!(window.MINDAR && window.MINDAR.IMAGE && window.MINDAR.IMAGE.Compiler)) {
+        compileText.textContent='Compilerが読み込めませんでした'; log('no Compiler','e'); return;
+      }
       try {
-        const bytes = await buildMind();
+        const bytes = await buildMind();              // 読込時にコンパイル（カメラ権限不要）
         const blob = new Blob([bytes], { type:'application/octet-stream' });
         const url = URL.createObjectURL(blob);
-        log('.mind blob 準備完了');
-        sceneEl = buildScene(url);
-      } catch(e){ compileText.textContent='コンパイル失敗: ' + (e && e.message || e); log('init error: ' + (e && e.message || e), 'e'); }
+        log('.mind blob url 準備完了');
+        sceneEl = buildScene(url);                    // シーンを事前構築（autoStart:false）
+      } catch(e){
+        compileText.textContent='コンパイル失敗: ' + (e && e.message || e);
+        log('buildMind/scene error: ' + (e && e.message || e), 'e');
+      }
     })();
 
     startBtn.addEventListener('click', () => {
@@ -311,11 +277,17 @@
       startBtn.disabled = true; startBtn.textContent='起動中…'; log('startBtn tapped');
       const sys = sceneEl.systems['mindar-image-system'];
       if (!sys) { log('mindar-image-system なし','e'); return; }
+      // ユーザー操作中に getUserMedia を発火（iOS対策）。
+      // start() は Promise を返さない版があるため Promise.resolve でラップ。
       let ret;
       try { ret = sys.start(); }
-      catch (e) { log('start() 例外: ' + (e && e.message || e), 'e'); startBtn.disabled=false; startBtn.textContent='カメラを起動してARを開始'; return; }
+      catch (e) {
+        log('start() 例外: ' + (e && e.message || e), 'e');
+        startBtn.disabled=false; startBtn.textContent='カメラを起動してARを開始';
+        return;
+      }
       Promise.resolve(ret).then(() => {
-        log('start() 完了。マーカーを映してください', 'w');
+        log('start() 完了。マーカーシートを映してください', 'w');
         document.getElementById('ui').classList.add('hidden');
         statusEl.classList.remove('hidden'); fpsEl.classList.remove('hidden');
         requestAnimationFrame(fpsLoop);
