@@ -220,16 +220,34 @@
       document.body.appendChild(scene);
       scene.addEventListener('arReady', () => log('arReady', 'w'));
       scene.addEventListener('arError', (e) => log('arError: ' + JSON.stringify(e.detail||{}), 'e'));
-      scene.addEventListener('loaded', () => {
-        document.querySelectorAll('.target').forEach(el => {
-          const name = el.getAttribute('data-name');
-          el.addEventListener('targetFound', () => { tracked++; log(`found ${name}（${tracked}/${N}）`); refreshStatus(); });
-          el.addEventListener('targetLost', () => { tracked=Math.max(0,tracked-1); log(`lost ${name}（${tracked}/${N}）`); refreshStatus(); });
-        });
-        log('scene loaded — start ボタン有効化');
-        const btn = document.getElementById('startBtn');
-        btn.disabled = false; btn.textContent = 'カメラを起動してARを開始';
-      });
+
+      // 'loaded' イベントに依存せず、MindARシステムが使えるようになり次第ボタンを有効化
+      let readyDone = false;
+      function onReady(reason){
+        if (readyDone) return;
+        const sys = scene.systems && scene.systems['mindar-image-system'];
+        if (!sys) return; // まだシステム未準備
+        readyDone = true;
+        startBtn.disabled = false;
+        startBtn.textContent = 'カメラを起動してARを開始';
+        compileText.textContent = '準備完了 — 「カメラを起動」をタップしてください';
+        log('scene ready (' + reason + ') — start 有効化', 'w');
+        try {
+          document.querySelectorAll('.target').forEach(el => {
+            const name = el.getAttribute('data-name');
+            el.addEventListener('targetFound', () => { tracked++; log(`found ${name}（${tracked}/${N}）`); refreshStatus(); });
+            el.addEventListener('targetLost', () => { tracked=Math.max(0,tracked-1); log(`lost ${name}（${tracked}/${N}）`); refreshStatus(); });
+          });
+        } catch(e){ log('listener attach error: ' + (e && e.message || e), 'e'); }
+      }
+      scene.addEventListener('loaded', () => onReady('loaded'));
+      if (scene.hasLoaded) onReady('already-loaded');
+      let tries = 0;
+      const iv = setInterval(() => {
+        if (readyDone) { clearInterval(iv); return; }
+        onReady('poll');
+        if (++tries > 50) { clearInterval(iv); if (!readyDone) { compileText.textContent = 'AR初期化に時間がかかっています（ログ確認）'; log('scene ready timeout', 'e'); } }
+      }, 200);
       return scene;
     }
 
