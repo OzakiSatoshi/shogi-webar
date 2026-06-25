@@ -62,6 +62,11 @@
       <a-cylinder ${A('#5a3b1f')} radius="0.022" height="1.1" position="0.44 0.58 0"></a-cylinder>
       <a-cone ${T('#e6edf5')} radius-bottom="0.07" radius-top="0" height="0.34" position="0.5 1.2 0" rotation="0 0 -28"></a-cone>
       <a-cone ${glow(edge, 0.5)} radius-bottom="0.072" radius-top="0" height="0.35" position="0.5 1.2 0" rotation="0 0 -28"></a-cone>`;
+    if (type === 'longyari') return `
+      <a-cylinder ${A('#6b4a2b')} radius="0.024" height="1.5" position="0.34 0.82 0.02"></a-cylinder>
+      <a-torus ${T(trim)} radius="0.05" radius-tubular="0.012" rotation="90 0 0" position="0.34 0.98 0.02"></a-torus>
+      <a-cone ${T('#e6edf5')} radius-bottom="0.05" radius-top="0" height="0.26" position="0.34 1.66 0.02"></a-cone>
+      <a-cone ${glow(edge, 0.5)} radius-bottom="0.052" radius-top="0" height="0.27" position="0.34 1.66 0.02"></a-cone>`;
     if (type === 'katana') return `
       <a-box ${T('#e8eef6')} width="0.045" height="0.7" depth="0.02" position="0.36 0.7 0.04"></a-box>
       <a-box ${glow(edge, 0.45)} width="0.05" height="0.72" depth="0.008" position="0.39 0.7 0.04"></a-box>
@@ -126,6 +131,59 @@
     s += weapon(o.weapon, A, T, trim, eye);
     if (o.cape) s += `<a-plane ${M(o.cape, { rough: 0.75, side: 'double' })} width="0.5" height="0.66" position="0 0.66 -0.2" rotation="12 0 0"></a-plane>`;
     if (o.wings) s += wing(-1, o.wings) + wing(1, o.wings);
+    if (o.wheels) {
+      const wheel = (x) => `
+        <a-torus ${M('#16161c', { metal: 0.4, rough: 0.5 })} radius="0.27" radius-tubular="0.05" position="${x} 0.27 0" rotation="0 90 0"></a-torus>
+        <a-torus ${T(trim)} radius="0.28" radius-tubular="0.018" position="${x} 0.27 0" rotation="0 90 0"></a-torus>
+        <a-cylinder ${T(trim)} radius="0.045" height="0.07" rotation="0 0 90" position="${x} 0.27 0"></a-cylinder>
+        <a-box ${T(trim)} width="0.015" height="0.5" depth="0.015" position="${x} 0.27 0" rotation="90 0 0"></a-box>
+        <a-box ${T(trim)} width="0.015" height="0.5" depth="0.015" position="${x} 0.27 0" rotation="90 90 0"></a-box>`;
+      s += wheel(-0.42) + wheel(0.42);
+    }
+    return s;
+  }
+
+  // ---------- 騎馬武者（桂馬）----------
+  function horseRider(o) {
+    o = o || {};
+    const horse = o.horse || '#6b4a2e';
+    const armor = o.armor || '#2f9e57';
+    const trim = o.trim || '#bdeccb';
+    const eye = o.eye || '#a6ffc6';
+    const HM = (c) => M(c, { metal: 0.05, rough: 0.75 });
+    const A = (c) => M(c, { metal: 0.5, rough: 0.4 });
+    const T = (c) => M(c, { metal: 0.7, rough: 0.22 });
+    let s = o.promoted ? aura() : ring();
+    // --- 馬 ---
+    const leg = (x, z) => `<a-cylinder ${HM(horse)} radius="0.05" height="0.36" position="${x} 0.18 ${z}"></a-cylinder>
+      <a-cylinder ${M('#241810', { rough: 0.8 })} radius="0.053" height="0.07" position="${x} 0.035 ${z}"></a-cylinder>`;
+    s += leg(-0.13, 0.21) + leg(0.13, 0.21) + leg(-0.13, -0.19) + leg(0.13, -0.19);
+    s += `<a-cylinder ${HM(horse)} radius="0.15" height="0.6" rotation="90 0 0" position="0 0.5 0.02"></a-cylinder>`;       // 胴
+    s += `<a-sphere ${HM(horse)} radius="0.15" position="0 0.5 0.32" scale="1 1 0.8"></a-sphere>`;                          // 胸
+    s += `<a-cone ${HM('#4a3420')} radius-bottom="0.05" radius-top="0" height="0.32" position="0 0.5 -0.34" rotation="-55 0 0"></a-cone>`; // 尾
+    s += `<a-box ${HM(horse)} width="0.16" height="0.36" depth="0.16" position="0 0.7 0.34" rotation="32 0 0"></a-box>`;    // 首
+    s += `<a-box ${HM('#3a2616')} width="0.05" height="0.2" depth="0.34" position="0 0.78 0.26" rotation="32 0 0"></a-box>`; // たてがみ
+    s += `<a-box ${HM(horse)} width="0.13" height="0.16" depth="0.27" position="0 0.9 0.46" rotation="14 0 0"></a-box>`;    // 頭
+    s += `<a-box ${HM('#5a3e24')} width="0.11" height="0.1" depth="0.12" position="0 0.86 0.6"></a-box>`;                   // 鼻先
+    s += `<a-cone ${HM(horse)} radius-bottom="0.03" radius-top="0" height="0.1" position="-0.05 1.0 0.4"></a-cone>
+          <a-cone ${HM(horse)} radius-bottom="0.03" radius-top="0" height="0.1" position="0.05 1.0 0.4"></a-cone>`;          // 耳
+    s += `<a-box ${glow(eye, 1.2)} width="0.02" height="0.02" depth="0.02" position="0 0.9 0.62"></a-box>`;                 // 目
+    s += `<a-box ${T(trim)} width="0.32" height="0.07" depth="0.3" position="0 0.66 0.02"></a-box>`;                       // 鞍
+    // --- 騎手（座位の武者）---
+    s += `<a-cylinder ${A(armor)} radius="0.05" height="0.22" position="-0.15 0.6 0.08" rotation="22 0 0"></a-cylinder>
+          <a-cylinder ${A(armor)} radius="0.05" height="0.22" position="0.15 0.6 0.08" rotation="22 0 0"></a-cylinder>`;     // 脚
+    s += `<a-box ${A(armor)} width="0.27" height="0.28" depth="0.22" position="0 0.86 0"></a-box>`;                        // 胴
+    s += `<a-octahedron ${glow(o.gem || eye, 1.1)} radius="0.05" position="0 0.88 0.12"></a-octahedron>`;                  // 胸宝石
+    s += `<a-sphere ${A(armor)} radius="0.1" position="-0.17 0.99 0" scale="1 0.7 1"></a-sphere>
+          <a-sphere ${A(armor)} radius="0.1" position="0.17 0.99 0" scale="1 0.7 1"></a-sphere>`;                           // 肩
+    s += `<a-sphere ${M('#ffd0a0', { rough: 0.65 })} radius="0.11" position="0 1.1 0"></a-sphere>`;                        // 頭
+    s += `<a-box ${glow(eye, 1.5)} width="0.14" height="0.028" depth="0.02" position="0 1.1 0.09"></a-box>`;               // バイザー
+    s += `<a-sphere ${T(armor)} radius="0.12" position="0 1.16 0" scale="1 0.8 1"></a-sphere>`;                            // 兜
+    s += `<a-cone ${T(trim)} radius-bottom="0.03" radius-top="0" height="0.2" position="-0.08 1.28 0" rotation="0 0 42"></a-cone>
+          <a-cone ${T(trim)} radius-bottom="0.03" radius-top="0" height="0.2" position="0.08 1.28 0" rotation="0 0 -42"></a-cone>`; // 角（馬の前立て）
+    // 槍（斜めに構える）
+    s += `<a-cylinder ${M('#6b4a2b', { rough: 0.5 })} radius="0.02" height="1.15" position="0.26 1.0 0.18" rotation="22 0 -10"></a-cylinder>`;
+    s += `<a-cone ${T('#dfe6ee')} radius-bottom="0.045" radius-top="0" height="0.2" position="0.36 1.5 0.36" rotation="22 0 -10"></a-cone>`;
     return s;
   }
 
@@ -203,16 +261,16 @@
   // ---------- 各駒 ----------
   const B = {};
   B.fu   = () => warrior({ armor: '#b23b3b', trim: '#e0c060', skin: '#ffd0a0', metal: 0.3, rough: 0.55, helmet: 'simple',   weapon: 'yari',     eye: '#ffd86a', gem: '#ffd24a' });
-  B.kyo  = () => warrior({ armor: '#c5793a', trim: '#ffd9a0', metal: 0.45, rough: 0.45, helmet: 'kuwagata', weapon: 'naginata', eye: '#ffcf6a', gem: '#ffcf6a' });
-  B.kei  = () => warrior({ armor: '#2f9e57', trim: '#bdeccb', metal: 0.45, rough: 0.45, helmet: 'horns',    weapon: 'yari',     eye: '#a6ffc6', gem: '#a6ffc6' });
+  B.kyo  = () => warrior({ armor: '#c5793a', trim: '#ffd9a0', metal: 0.45, rough: 0.45, helmet: 'simple',   weapon: 'longyari', eye: '#ffcf6a', gem: '#ffcf6a' });
+  B.kei  = () => horseRider({ horse: '#6b4a2e', armor: '#2f9e57', trim: '#bdeccb', eye: '#a6ffc6', gem: '#a6ffc6' });
   B.gin  = () => warrior({ armor: '#c2cad4', trim: '#f0f5fb', metal: 0.85, rough: 0.25, helmet: 'kuwagata', weapon: 'katana',   cape: '#46577a', eye: '#cdeeff', gem: '#cdeeff' });
   B.kin  = () => warrior({ armor: '#e3b53a', trim: '#fff0a8', metal: 0.9, rough: 0.22, helmet: 'crescent', weapon: 'katana',   cape: '#7a3030', eye: '#fff0a8', gem: '#fff3b0' });
   B.kaku = () => mage({ robe: '#5e2e9e', trim: '#caa6ff', orb: '#b07bff', eye: '#e0c2ff' });
-  B.hi   = () => warrior({ armor: '#3f6fd0', trim: '#bcd6ff', metal: 0.75, rough: 0.28, helmet: 'kuwagata', weapon: 'naginata', wings: '#5a8ad8', eye: '#bcecff', gem: '#bcecff' });
+  B.hi   = () => warrior({ armor: '#3f6fd0', trim: '#bcd6ff', metal: 0.75, rough: 0.28, helmet: 'kuwagata', weapon: 'longyari', wheels: true, eye: '#bcecff', gem: '#bcecff' });
   B.ou   = () => king();
 
   B.to   = () => warrior({ armor: '#bd3a3a', trim: '#ffd700', metal: 0.5, rough: 0.4, helmet: 'crescent', weapon: 'yari',   eye: '#ffe07a', gem: '#ffd700', promoted: true });
-  B.nkyo = () => warrior({ armor: '#cf8a3a', trim: '#ffe07a', metal: 0.6, rough: 0.35, helmet: 'crescent', weapon: 'naginata', eye: '#ffe07a', gem: '#ffd700', promoted: true });
+  B.nkyo = () => warrior({ armor: '#cf8a3a', trim: '#ffe07a', metal: 0.6, rough: 0.35, helmet: 'crescent', weapon: 'longyari', eye: '#ffe07a', gem: '#ffd700', promoted: true });
   B.nkei = () => warrior({ armor: '#34ad60', trim: '#ffe07a', metal: 0.6, rough: 0.35, helmet: 'crescent', weapon: 'yari',   eye: '#cbffd9', gem: '#ffd700', promoted: true });
   B.ngin = () => warrior({ armor: '#cfd6e0', trim: '#ffe07a', metal: 0.9, rough: 0.2, helmet: 'crescent', weapon: 'katana', cape: '#5a4a2a', eye: '#fff0c0', gem: '#ffd700', promoted: true });
   B.uma  = () => mage({ robe: '#5e2e9e', trim: '#ffd700', orb: '#ffcf66', eye: '#ffe6a8', wings: '#b88bff', promoted: true });
@@ -221,19 +279,19 @@
   // ---------- レジストリ ----------
   const PIECES = [
     { key: 'fu',   kanji: '歩',   name: '歩兵',  romaji: 'Fu / Pawn' },
-    { key: 'kyo',  kanji: '香',   name: '香車',  romaji: 'Kyō / Lance' },
-    { key: 'kei',  kanji: '桂',   name: '桂馬',  romaji: 'Kei / Knight' },
+    { key: 'kyo',  kanji: '香',   name: '香車',  romaji: 'Kyō / Lance', tall: true },
+    { key: 'kei',  kanji: '桂',   name: '桂馬',  romaji: 'Kei / Knight', tall: true },
     { key: 'gin',  kanji: '銀',   name: '銀将',  romaji: 'Gin / Silver' },
     { key: 'kin',  kanji: '金',   name: '金将',  romaji: 'Kin / Gold' },
     { key: 'kaku', kanji: '角',   name: '角行',  romaji: 'Kaku / Bishop' },
-    { key: 'hi',   kanji: '飛',   name: '飛車',  romaji: 'Hi / Rook' },
-    { key: 'ou',   kanji: '王',   name: '王将',  romaji: 'Ō / King' },
+    { key: 'hi',   kanji: '飛',   name: '飛車',  romaji: 'Hi / Rook', tall: true },
+    { key: 'ou',   kanji: '王',   name: '王将',  romaji: 'Ō / King', tall: true },
     { key: 'to',   kanji: 'と',   name: 'と金',  romaji: 'To (+Pawn)',    promoted: true },
-    { key: 'nkyo', kanji: '成香', name: '成香',  romaji: '+Lance',        promoted: true },
+    { key: 'nkyo', kanji: '成香', name: '成香',  romaji: '+Lance',        promoted: true, tall: true },
     { key: 'nkei', kanji: '成桂', name: '成桂',  romaji: '+Knight',       promoted: true },
     { key: 'ngin', kanji: '成銀', name: '成銀',  romaji: '+Silver',       promoted: true },
     { key: 'uma',  kanji: '馬',   name: '龍馬',  romaji: 'Uma (+Bishop)', promoted: true },
-    { key: 'ryu',  kanji: '龍',   name: '龍王',  romaji: 'Ryū (+Rook)',   promoted: true },
+    { key: 'ryu',  kanji: '龍',   name: '龍王',  romaji: 'Ryū (+Rook)',   promoted: true, tall: true },
   ];
   PIECES.forEach(p => { p.build = B[p.key]; });
 

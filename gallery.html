@@ -62,7 +62,7 @@
       <a-entity id="pieceHolder"></a-entity>
     </a-entity>
 
-    <a-entity camera="fov: 40" position="0 0.92 4.3" rotation="-6 0 0" look-controls="enabled: false"></a-entity>
+    <a-entity id="cam" camera="fov: 40" position="0 0.92 4.3" rotation="-6 0 0" look-controls="enabled: false"></a-entity>
   </a-scene>
 
   <script>
@@ -92,6 +92,8 @@
       elRomaji.textContent = p.romaji;
       elCount.textContent = (idx + 1) + ' / ' + PIECES.length;
       elBadge.style.display = p.promoted ? 'inline-block' : 'none';
+      const cam = document.getElementById('cam');
+      if (cam) cam.setAttribute('position', p.tall ? '0 1.08 5.1' : '0 0.92 4.3');
       chips.forEach((c, j) => c.classList.toggle('active', j === idx));
       const active = chips[idx]; if (active) active.scrollIntoView({ inline: 'center', block: 'nearest' });
     }
