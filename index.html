@@ -277,8 +277,16 @@
       startBtn.disabled = true; startBtn.textContent='起動中…'; log('startBtn tapped');
       const sys = sceneEl.systems['mindar-image-system'];
       if (!sys) { log('mindar-image-system なし','e'); return; }
-      // ユーザー操作中に getUserMedia を発火（iOS対策）
-      sys.start().then(() => {
+      // ユーザー操作中に getUserMedia を発火（iOS対策）。
+      // start() は Promise を返さない版があるため Promise.resolve でラップ。
+      let ret;
+      try { ret = sys.start(); }
+      catch (e) {
+        log('start() 例外: ' + (e && e.message || e), 'e');
+        startBtn.disabled=false; startBtn.textContent='カメラを起動してARを開始';
+        return;
+      }
+      Promise.resolve(ret).then(() => {
         log('start() 完了。マーカーシートを映してください', 'w');
         document.getElementById('ui').classList.add('hidden');
         statusEl.classList.remove('hidden'); fpsEl.classList.remove('hidden');
