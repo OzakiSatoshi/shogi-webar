@@ -42,6 +42,14 @@
     #status.tracking { background: rgba(34, 160, 90, .9); }
     #status.hidden { display: none; }
 
+    #fps {
+      position: fixed; top: 12px; left: 12px; z-index: 20;
+      padding: 6px 10px; border-radius: 8px; font-size: 13px; font-weight: 700;
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      background: rgba(0,0,0,.55); color: #7fe6ff;
+    }
+    #fps.hidden { display: none; }
+
     #log {
       position: fixed; left: 0; right: 0; bottom: 0; z-index: 25;
       max-height: 34vh; overflow-y: auto; margin: 0; padding: 8px 10px;
@@ -77,12 +85,13 @@
   </div>
 
   <div id="status" class="hidden">マーカーを探しています…</div>
+  <div id="fps" class="hidden">FPS: --</div>
 
   <button id="logToggle">ログ表示/非表示</button>
   <pre id="log"></pre>
 
   <a-scene
-    mindar-image="imageTargetSrc: https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/band-example/band.mind; autoStart: false; maxTrack: 2; showStats: true; uiScanning: no; uiLoading: no; uiError: no;"
+    mindar-image="imageTargetSrc: https://cdn.jsdelivr.net/gh/hiukim/mind-ar-js@1.2.5/examples/image-tracking/assets/band-example/band.mind; autoStart: false; maxTrack: 2; uiScanning: no; uiLoading: no; uiError: no;"
     color-space="sRGB"
     renderer="colorManagement: true, physicallyCorrectLights"
     vr-mode-ui="enabled: false"
@@ -155,7 +164,19 @@
     const startBtn = document.getElementById('startBtn');
     const note = document.getElementById('note');
     const statusEl = document.getElementById('status');
+    const fpsEl = document.getElementById('fps');
     const sceneEl = document.querySelector('a-scene');
+
+    // 自前の軽量FPSメーター（MindARのshowStatsに依存しない）
+    let _frames = 0, _last = performance.now();
+    function fpsLoop(now) {
+      _frames++;
+      if (now - _last >= 1000) {
+        fpsEl.textContent = 'FPS: ' + _frames;
+        _frames = 0; _last = now;
+      }
+      requestAnimationFrame(fpsLoop);
+    }
 
     // 同時追従中の枚数をカウントして表示
     let tracked = 0;
@@ -194,7 +215,10 @@
         try {
           await arSystem.start();
           log('start() 完了。2枚のマーカーを同時に映してください', 'w');
-          ui.classList.add('hidden'); statusEl.classList.remove('hidden');
+          ui.classList.add('hidden');
+          statusEl.classList.remove('hidden');
+          fpsEl.classList.remove('hidden');
+          requestAnimationFrame(fpsLoop);
         } catch (e) {
           log('start() 失敗: ' + (e && e.message ? e.message : e), 'e');
           startBtn.disabled = false; startBtn.textContent = 'カメラを起動してARを開始';
