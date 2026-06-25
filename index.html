@@ -137,6 +137,11 @@
     let SET = params.get('set') || 'types';
     if (!['types', 'side', 'full'].includes(SET)) SET = 'types';
     const SIZE = parseInt(params.get('size') || '384', 10);
+    // 検出を緩める調整（URLで上書き可）：warmup小=速く出る / miss大=見失っても消えにくい
+    const WARMUP = params.get('warmup') || '0';
+    const MISS = params.get('miss') || '30';
+    const MINCF = params.get('mincf') || '0.0001';
+    const BETA = params.get('beta') || '1000';
     let MARKER = params.get('marker') || 'std';        // std（一般・二字駒）/ real（装飾・赤木地）/ koma（自作駒風）/ pattern（抽象）
     if (!['std', 'real', 'koma', 'pattern'].includes(MARKER)) MARKER = 'std';
     const FACE_DIR = { std: 'koma-std', real: 'koma' }; // 駒面画像のフォルダ
@@ -348,7 +353,8 @@
 
     function buildScene(blobUrl){
       const scene = document.createElement('a-scene');
-      scene.setAttribute('mindar-image', `imageTargetSrc: ${blobUrl}; autoStart: false; maxTrack: ${N}; uiScanning: no; uiLoading: no; uiError: no;`);
+      scene.setAttribute('mindar-image', `imageTargetSrc: ${blobUrl}; autoStart: false; maxTrack: ${N}; warmupTolerance: ${WARMUP}; missTolerance: ${MISS}; filterMinCF: ${MINCF}; filterBeta: ${BETA}; uiScanning: no; uiLoading: no; uiError: no;`);
+      log(`tuning: warmup=${WARMUP}, miss=${MISS}, minCF=${MINCF}, beta=${BETA}`);
       scene.setAttribute('color-space','sRGB');
       scene.setAttribute('renderer','colorManagement: true, physicallyCorrectLights, exposure: 1.05');
       scene.setAttribute('vr-mode-ui','enabled: false');
