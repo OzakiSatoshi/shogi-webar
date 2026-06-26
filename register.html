@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>将棋WebAR — 自分の駒を登録</title>
+  <script src="https://aframe.io/releases/1.3.0/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+  <script src="./pieces.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN", sans-serif; background:#0c1424; color:#fff; overflow:hidden; }
+    #cam { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; background:#000; z-index: 0; }
+    /* 撮影ガイド枠（中央・駒型） */
+    #guide { position: fixed; left: 50%; top: 38%; transform: translate(-50%,-50%); z-index: 2;
+      width: 46vw; max-width: 240px; aspect-ratio: 5/6; border: 3px dashed #ffd24a; border-radius: 8px;
+      box-shadow: 0 0 0 2000px rgba(0,0,0,.35); pointer-events: none; }
+    #guideHint { position: fixed; left:0; right:0; top: 8px; z-index:3; text-align:center; font-size:13px; text-shadow:0 1px 3px #000; }
+
+    #panel { position: fixed; left: 0; right: 0; bottom: 0; z-index: 4; padding: 10px 10px calc(10px + env(safe-area-inset-bottom));
+      background: rgba(10,16,28,.86); backdrop-filter: blur(4px); }
+    #chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 8px; }
+    .chip { flex: 0 0 auto; min-width: 40px; height: 40px; border-radius: 9px; border: 2px solid transparent;
+      background: rgba(255,255,255,.12); color:#fff; font-size: 17px; font-weight: 700; }
+    .chip.promoted { color:#ffb0b0; }
+    .chip.on { border-color: #ffd24a; background: rgba(255,210,74,.25); }
+    .row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+    .row .grow { flex: 1; }
+    button.act { padding: 12px 16px; font-size: 15px; font-weight: 700; border: none; border-radius: 10px; }
+    #shoot { background:#ffd24a; color:#0c1424; }
+    #next { background:#36c06a; color:#04210f; }
+    button:disabled { opacity:.45; }
+    #thumbs { display:flex; gap:6px; overflow-x:auto; margin-top:8px; min-height: 4px; }
+    .thumb { position: relative; flex:0 0 auto; }
+    .thumb canvas { width: 46px; height: 56px; object-fit: cover; border-radius: 6px; border:2px solid rgba(255,255,255,.3); display:block; }
+    .thumb .k { position:absolute; left:2px; bottom:2px; font-size:11px; font-weight:700; background:rgba(0,0,0,.6); border-radius:4px; padding:0 3px; }
+    .thumb .x { position:absolute; right:-4px; top:-6px; width:18px; height:18px; border-radius:50%; background:#e04848; color:#fff; border:none; font-size:12px; line-height:18px; padding:0; }
+    #count { font-size:12px; opacity:.8; }
+
+    #startOverlay { position: fixed; inset: 0; z-index: 6; display:none; flex-direction:column; align-items:center; justify-content:center;
+      gap: 12px; padding: 24px; text-align:center; background: linear-gradient(160deg,#1b2a4a,#0c1424); }
+    #startOverlay.show { display:flex; }
+    #bar { width: min(80vw,360px); height: 10px; background: rgba(255,255,255,.18); border-radius:999px; overflow:hidden; }
+    #barFill { height:100%; width:0%; background:#ffd24a; transition: width .2s; }
+
+    #status { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); z-index: 5; padding:7px 14px; border-radius:999px;
+      font-size:13px; font-weight:700; background:rgba(0,0,0,.55); display:none; }
+    #status.show { display:block; } #status.tracking { background: rgba(34,160,90,.9); }
+    #log { position: fixed; left:0; right:0; bottom:0; z-index:7; max-height:32vh; overflow-y:auto; margin:0; padding:8px;
+      font:11px/1.4 ui-monospace,monospace; color:#b8f5c8; background:rgba(0,0,0,.66); white-space:pre-wrap; word-break:break-all; display:none; }
+    #log .e{color:#ff8a8a;} #log .w{color:#ffd24a;}
+    #logToggle{ position: fixed; right:8px; top:8px; z-index:8; padding:5px 10px; font-size:12px; border:none; border-radius:6px; background:rgba(0,0,0,.6); color:#fff; }
+    a.back { position: fixed; left:8px; top:8px; z-index:8; color:#9cf; font-size:12px; background:rgba(0,0,0,.5); padding:5px 9px; border-radius:6px; text-decoration:none; }
+  </style>
+</head>
+<body>
+  <video id="cam" playsinline muted autoplay></video>
+  <div id="guide"></div>
+  <div id="guideHint">枠に駒の面を大きく・正面から入れて「撮影」</div>
+  <a class="back" href="./">← 通常マーカー版へ</a>
+  <button id="logToggle">ログ</button>
+  <pre id="log"></pre>
+
+  <div id="panel">
+    <div id="chips"></div>
+    <div class="row">
+      <button id="shoot" class="act grow" disabled>① 駒種を選んで撮影</button>
+      <button id="next" class="act" disabled>② ARへ</button>
+    </div>
+    <div class="row"><span id="count">登録 0 駒</span><span class="grow"></span><button id="clear" class="act" style="background:#444;color:#fff;">クリア</button></div>
+    <div id="thumbs"></div>
+  </div>
+
+  <div id="startOverlay">
+    <h2 id="ovTitle">コンパイル中…</h2>
+    <div id="bar"><div id="barFill"></div></div>
+    <div id="ovText" style="font-size:13px;opacity:.9;"></div>
+    <button id="startAR" class="act" style="background:#ffd24a;color:#0c1424;" disabled>カメラを起動してAR開始</button>
+  </div>
+
+  <div id="status">マーカーを探しています…</div>
+
+  <script>
+    const logEl = document.getElementById('log');
+    function log(m, c){ const s=document.createElement('span'); if(c)s.className=c; s.textContent='['+new Date().toISOString().substr(11,8)+'] '+m+'\n'; logEl.appendChild(s); logEl.scrollTop=logEl.scrollHeight; }
+    document.getElementById('logToggle').onclick=()=>{ logEl.style.display = logEl.style.display==='none'?'block':'none'; };
+    window.addEventListener('error', e=>log('error: '+(e.message||e),'e'));
+    window.addEventListener('unhandledrejection', e=>log('reject: '+(e.reason&&e.reason.message||e.reason),'e'));
+
+    const video = document.getElementById('cam');
+    const chipsEl = document.getElementById('chips');
+    const shootBtn = document.getElementById('shoot'), nextBtn = document.getElementById('next'), clearBtn = document.getElementById('clear');
+    const thumbsEl = document.getElementById('thumbs'), countEl = document.getElementById('count');
+    let stream = null, selectedKey = null, captured = [];
+
+    // 駒種チップ
+    (window.SHOGI_PIECES||[]).forEach(p => {
+      const b=document.createElement('button'); b.className='chip'+(p.promoted?' promoted':''); b.textContent=p.kanji; b.title=p.name;
+      b.onclick=()=>{ selectedKey=p.key; document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on', c===b));
+        shootBtn.disabled=false; shootBtn.textContent='「'+p.kanji+'」を撮影'; };
+      chipsEl.appendChild(b);
+    });
+
+    // カメラ起動（プレビュー）— 最初のタップで権限要求
+    async function startPreview(){
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal:'environment' } }, audio:false });
+        video.srcObject = stream; await video.play().catch(()=>{});
+        log('preview started '+video.videoWidth+'x'+video.videoHeight, 'w');
+      } catch(e){ log('getUserMedia 失敗: '+(e&&e.message||e),'e'); document.getElementById('guideHint').textContent='カメラを起動できません（権限/HTTPSを確認）'; }
+    }
+    // 初回タップでプレビュー開始（iOSのジェスチャ要件）
+    function armPreview(){ document.body.addEventListener('click', function once(){ if(!stream) startPreview(); document.body.removeEventListener('click', once); }, { once:false }); }
+
+    // ガイド枠に対応する中央クロップを取得
+    function captureCrop(){
+      const vw=video.videoWidth, vh=video.videoHeight; if(!vw) return null;
+      const fracW=0.46, fracH=0.55;                 // ガイドにおおよそ対応
+      const cw=vw*fracW, ch=vh*fracH, sx=(vw-cw)/2, sy=vh*0.38-ch/2;
+      const out=document.createElement('canvas'); const scale=Math.min(1, 420/cw); out.width=Math.round(cw*scale); out.height=Math.round(ch*scale);
+      out.getContext('2d').drawImage(video, sx, Math.max(0,sy), cw, ch, 0, 0, out.width, out.height);
+      return out;
+    }
+    function renderThumbs(){
+      thumbsEl.innerHTML='';
+      captured.forEach((c,i)=>{
+        const d=document.createElement('div'); d.className='thumb';
+        c.canvas.classList.add('tc'); const cv=c.canvas.cloneNode(); cv.getContext('2d').drawImage(c.canvas,0,0);
+        d.appendChild(cv);
+        const k=document.createElement('span'); k.className='k'; k.textContent=c.kanji; d.appendChild(k);
+        const x=document.createElement('button'); x.className='x'; x.textContent='×'; x.onclick=()=>{ captured.splice(i,1); renderThumbs(); updateCount(); }; d.appendChild(x);
+        thumbsEl.appendChild(d);
+      });
+    }
+    function updateCount(){ countEl.textContent='登録 '+captured.length+' 駒'; nextBtn.disabled = captured.length<1; saveCaptures(); }
+
+    shootBtn.onclick=()=>{
+      if(!selectedKey){ return; }
+      const cv=captureCrop(); if(!cv){ log('まだカメラ準備中','w'); return; }
+      const p=(window.SHOGI_PIECES||[]).find(x=>x.key===selectedKey);
+      captured.push({ key:selectedKey, kanji:p?p.kanji:'?', canvas:cv });
+      renderThumbs(); updateCount(); log('captured '+selectedKey+' ('+captured.length+')');
+    };
+    clearBtn.onclick=()=>{ captured=[]; renderThumbs(); updateCount(); };
+
+    // ---- IndexedDB に登録駒を保存（再訪時に再利用）----
+    function idb(){ return new Promise((res,rej)=>{ const r=indexedDB.open('mycaptures',1); r.onupgradeneeded=()=>r.result.createObjectStore('cap'); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+    async function saveCaptures(){ try{ const db=await idb(); const data=captured.map(c=>({key:c.key,kanji:c.kanji,dataURL:c.canvas.toDataURL('image/png')})); db.transaction('cap','readwrite').objectStore('cap').put(data,'last'); }catch(e){} }
+    async function loadCaptures(){ try{ const db=await idb(); return await new Promise(r=>{ const t=db.transaction('cap','readonly').objectStore('cap').get('last'); t.onsuccess=()=>r(t.result); t.onerror=()=>r(null); }); }catch(e){ return null; } }
+    function imgToCanvas(src){ return new Promise(res=>{ const im=new Image(); im.onload=()=>{ const c=document.createElement('canvas'); c.width=im.width; c.height=im.height; c.getContext('2d').drawImage(im,0,0); res(c); }; im.src=src; }); }
+
+    // ---- ②ARへ：プレビュー停止→コンパイル→シーン構築 ----
+    const ov=document.getElementById('startOverlay'), ovTitle=document.getElementById('ovTitle'), ovText=document.getElementById('ovText');
+    const barFill=document.getElementById('barFill'), startARBtn=document.getElementById('startAR');
+    let sceneEl=null;
+
+    nextBtn.onclick=async ()=>{
+      if(captured.length<1) return;
+      ov.classList.add('show'); ovTitle.textContent='コンパイル中…'; ovText.textContent='登録した駒を解析しています（数十秒）';
+      // カメラを解放（MindARが自前で取得するため）
+      if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; video.srcObject=null; }
+      try {
+        const imgs = await Promise.all(captured.map(c=>new Promise(r=>{ const im=new Image(); im.onload=()=>r(im); im.src=c.canvas.toDataURL('image/png'); })));
+        const compiler = new window.MINDAR.IMAGE.Compiler();
+        await compiler.compileImageTargets(imgs, p=>{ barFill.style.width=p.toFixed(0)+'%'; ovText.textContent='コンパイル '+p.toFixed(0)+'%'; });
+        const buf = await compiler.exportData();
+        const bytes = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
+        const url = URL.createObjectURL(new Blob([bytes],{type:'application/octet-stream'}));
+        log('compiled '+bytes.length+'B', 'w');
+        buildScene(url);
+        ovTitle.textContent='準備完了'; ovText.textContent='「カメラを起動」して、登録した駒を映してください';
+        startARBtn.disabled=false;
+      } catch(e){ ovTitle.textContent='コンパイル失敗'; ovText.textContent=(e&&e.message||e)+''; log('compile err: '+(e&&e.message||e),'e'); }
+    };
+
+    function targetHTML(i){
+      const c=captured[i];
+      const inner=window.shogiPieceEntityHTML(c.key,{scale:0.32, bobDur:1000+(i%5)*90});
+      return `<a-entity class="target" data-name="${c.kanji}${i+1}" mindar-image-target="targetIndex: ${i}">
+        <a-entity rotation="90 0 0" position="0 0 0.01">${inner}</a-entity></a-entity>`;
+    }
+    let tracked=0; const statusEl=document.getElementById('status');
+    function refresh(){ statusEl.textContent = tracked>0 ? ('表示中 '+tracked+'/'+captured.length+' 駒') : 'マーカーを探しています…'; statusEl.classList.toggle('tracking', tracked>0); }
+
+    function buildScene(blobUrl){
+      const scene=document.createElement('a-scene');
+      scene.setAttribute('mindar-image', `imageTargetSrc: ${blobUrl}; autoStart: false; maxTrack: ${captured.length}; warmupTolerance: 0; missTolerance: 30; uiScanning: no; uiLoading: no; uiError: no;`);
+      scene.setAttribute('color-space','sRGB');
+      scene.setAttribute('renderer','colorManagement: true, physicallyCorrectLights, exposure: 1.05');
+      scene.setAttribute('vr-mode-ui','enabled: false'); scene.setAttribute('device-orientation-permission-ui','enabled: false');
+      let t=''; for(let i=0;i<captured.length;i++) t+=targetHTML(i);
+      scene.innerHTML = `
+        <a-entity light="type: hemisphere; color:#cfe0ff; groundColor:#54402a; intensity:0.7"></a-entity>
+        <a-entity light="type: directional; color:#fff4e0; intensity:0.95" position="1 2 1.5"></a-entity>
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>${t}`;
+      document.body.appendChild(scene); sceneEl=scene;
+      scene.addEventListener('arReady',()=>log('arReady','w'));
+      scene.addEventListener('arError',e=>log('arError: '+JSON.stringify(e.detail||{}),'e'));
+      const attach=()=>document.querySelectorAll('.target').forEach(el=>{ const n=el.getAttribute('data-name');
+        el.addEventListener('targetFound',()=>{ tracked++; log('found '+n); refresh(); });
+        el.addEventListener('targetLost',()=>{ tracked=Math.max(0,tracked-1); log('lost '+n); refresh(); }); });
+      if(scene.hasLoaded) attach(); else scene.addEventListener('loaded', attach);
+    }
+
+    startARBtn.onclick=()=>{
+      if(!sceneEl) return; startARBtn.disabled=true; startARBtn.textContent='起動中…';
+      const sys=sceneEl.systems['mindar-image-system']; if(!sys){ log('no system','e'); return; }
+      let ret; try{ ret=sys.start(); }catch(e){ log('start例外: '+(e&&e.message||e),'e'); startARBtn.disabled=false; return; }
+      Promise.resolve(ret).then(()=>{ log('start完了','w'); ov.classList.remove('show'); document.getElementById('panel').style.display='none';
+        document.getElementById('guide').style.display='none'; document.getElementById('guideHint').style.display='none'; statusEl.classList.add('show'); })
+        .catch(e=>{ log('start失敗: '+(e&&e.message||e),'e'); startARBtn.disabled=false; startARBtn.textContent='カメラを起動してAR開始'; });
+    };
+
+    // 初期化：前回の登録があれば復元、カメラはタップで開始
+    (async function init(){
+      if(!(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia)){ document.getElementById('guideHint').textContent='カメラAPI非対応のブラウザです'; return; }
+      const last = await loadCaptures();
+      if(last && last.length){ for(const c of last){ captured.push({ key:c.key, kanji:c.kanji, canvas: await imgToCanvas(c.dataURL) }); } renderThumbs(); updateCount(); log('前回の登録 '+last.length+' 駒を復元','w'); }
+      document.getElementById('guideHint').textContent='画面をタップしてカメラを起動 → 駒種を選んで撮影';
+      armPreview();
+    })();
+    window.addEventListener('beforeunload',()=>{ if(stream) stream.getTracks().forEach(t=>t.stop()); const s=sceneEl&&sceneEl.systems['mindar-image-system']; if(s)s.stop(); });
+  </script>
+</body>
+</html>
